@@ -82,9 +82,783 @@
     </div>
   </div>
   <script>
-    // Game state & mechanics (unchanged, preserve your combat and UI logic) ...
-    // [Insert all your JavaScript code here in full
-    // — unchanged, except ensure narrative updates from provided scenes are in the `scenes` object.]
-  </script>
+let gameState = {
+  currentScene: 'start',
+  health: 100,
+  maxHealth: 100,
+  fatigue: 0,
+  honor: 50,
+  inventory: ['Fallen Comrade\'s Mask', 'Infantry Blade', 'Meager Rations'],
+  flags: {},
+  skills: {},
+  er: 0,
+  maxER: 100,
+  momentum: 10,
+  maxMomentum: 30,
+  inCombat: false,
+  combatPhase: null,
+  currentVerb: null,
+  baseDamage: 15,
+  incomingMultiplier: 1.0,
+  comboCount: 0,
+  enemy: null,
+  combatHistory: []
+};
+
+// --- SCENES ---
+const scenes = {
+  start: {
+    text: [
+      '<p class="location-text">The Road to Uunsh – Dawn</p>',
+      '<p>Dawn breaks gently over the Road, its ancient stones gleaming softly under the first tendrils of sunlight. You awaken slowly, haunted still by echoes of Voln—the cries, the blood, the whispers of betrayal. Weeks have passed, but the pain remains fresh, etched into your bones with every aching night spent on hard earth.</p>',
+      '<p>Beside your bedroll lies your most precious burden: a carefully wrapped mask, once worn by Lyanna Thrace, your comrade and closest friend in the Third Imperial Cavalry. It\'s heavier than iron now—bearing grief, secrets, and promises you must keep. Your pilgrimage leads you to the Grove of Remembrance in Uunsh, where the Green will embrace her memory.</p>',
+      '<p>The Road awaits, indifferent yet eternal, winding toward truths you may not be ready to face.</p>'
+    ],
+    choices: [
+      { text: 'Gather your belongings and continue your pilgrimage', next: 'morningRoutine' },
+      { text: 'Reflect upon Lyanna\'s mask', next: 'examineMask' },
+      { text: 'Attempt to piece together memories of Voln', next: 'flashback1' }
+    ]
+  },
+
+  morningRoutine: {
+    text: [
+      '<p>You move methodically, breaking camp with practiced ease born of years serving the Empire. Bedroll secured, fire extinguished, gear packed tightly. Each action is a comforting ritual, grounding you against the uncertainty ahead.</p>',
+      '<p>Breakfast is sparse: dried meat and hardtack, washed down with dwindling water. Flavor is irrelevant; survival and duty are your nourishment now.</p>',
+      '<p>Shouldering your pack, you set forth. Ahead lies Uunsh, the Grove, and answers you might fear.</p>'
+    ],
+    choices: [
+      { text: 'Set off along the Road', next: 'roadWalk1' },
+      { text: 'Double-check your remaining supplies', next: 'checkSupplies' }
+    ]
+  },
+
+  examineMask: {
+    text: [
+      '<p>You unwrap the mask gently. Its fine craftsmanship glints subtly, catching dawn\'s fragile light. Lyanna had worn this mask proudly—a symbol of duty and identity. Now, it is your solemn charge.</p>',
+      '<p class="flashback-text">"Promise me," Lyanna whispered as life faded from her eyes. "Promise you\'ll deliver it to the Green. Promise you\'ll let the truth out."</p>',
+      '<p>Your fingers tremble slightly as you re-wrap the mask, heavier now with her memory and secrets yet unrevealed.</p>'
+    ],
+    choices: [
+      { text: 'Resume packing and prepare to leave', next: 'morningRoutine' },
+      { text: 'Offer a quiet prayer for Lyanna’s spirit', next: 'prayer1' }
+    ]
+  },
+
+  flashback1: {
+    text: [
+      '<p class="flashback-text">Fragments rush through your mind, unbidden but impossible to silence.</p>',
+      '<p class="flashback-text">The proud banners of the Third Cavalry whipping in the harsh wind. The sudden storm of fire and earth. Horses panicked, soldiers fallen—chaos consuming order with devastating swiftness.</p>',
+      '<p class="flashback-text">"Hold your ground!" It had been your command, or maybe Lyanna\'s. Memory blurs like mist over morning fields.</p>',
+      '<p>You press a palm to your forehead, forcing the painful past away. The Road demands clarity, not ghosts.</p>'
+    ],
+    choices: [
+      { text: 'Pack swiftly and focus on today\'s journey', next: 'morningRoutine' },
+      { text: 'Allow yourself to remember more deeply', next: 'deeperFlashback' }
+    ]
+  },
+
+  prayer1: {
+    text: [
+      '<p>You kneel beside the wrapped mask, speaking the traditional words of passing. "From iron to earth, from breath to wind, from blood to water, from spark to flame. The wheel turns, but memory remains."</p>',
+      '<p>The prayer feels hollow in your mouth. Your comrade deserves more than ritual words. She deserves justice, truth, a world where her sacrifice meant something.</p>',
+      '<p>Rising, you feel no lighter, but perhaps that is the point. Some burdens are meant to be carried.</p>'
+    ],
+    choices: [
+      { text: 'Pack up and continue', next: 'morningRoutine' }
+    ]
+  },
+
+  deeperFlashback: {
+    text: [
+      '<p class="flashback-text">You let the memories crash over you like a tide:</p>',
+      '<p class="flashback-text">Her laughter the night before battle, sharing stories around the campfire. The way she checked her horse\'s hooves with gentle care. How she\'d saved your life twice before you saved hers once.</p>',
+      '<p class="flashback-text">And then Voln. The ambush perfectly placed. The way the Aug constructs moved—too coordinated, too precise. As if they\'d known exactly where you\'d be.</p>',
+      '<p class="flashback-text">"Get the mask to the Green," she\'d said as the light faded from her eyes. "Tell them... tell them we didn\'t break."</p>',
+      '<p>You surface from the memories gasping, tears streaming down your face.</p>'
+    ],
+    choices: [
+      { text: 'Steel yourself and pack up', next: 'morningRoutine' }
+    ]
+  },
+
+  checkSupplies: {
+    text: [
+      '<p>You take inventory of your meager possessions. Your waterskin is less than half full—you\'ll need to find a stream or well soon. The rations are hard and tasteless but should last another few days if you\'re careful.</p>',
+      '<p>Your blade is well-maintained, its edge sharp despite the neglect of recent weeks. Your father would be proud that even in grief, you haven\'t forgotten the basics.</p>',
+      '<p>Everything else you once carried was lost at Voln or abandoned on the road. You travel light now, burdened only by necessity and duty.</p>'
+    ],
+    choices: [
+      { text: 'Begin your day\'s journey', next: 'roadWalk1' }
+    ]
+  },
+
+  // ...CONTINUED IN NEXT PART...
+  roadWalk1: {
+    text: [
+      '<p class="location-text">The Imperial Road – Morning</p>',
+      '<p>The road stretches before you, ancient and worn by the footsteps of generations. You pass merchants guiding their laden carts, pilgrims whispering prayers, and farmers carrying baskets of early apples. Most keep their distance when they see your uniform and the set of your jaw.</p>',
+      '<p>Ahead, a cluster of travelers is gathered, tense and whispering. Their faces are turned toward a commotion further along the road.</p>'
+    ],
+    choices: [
+      { text: 'Approach the disturbance', next: 'banditEncounter' },
+      { text: 'Circle wide and avoid trouble', next: 'avoidTrouble' },
+      { text: 'Observe quietly before deciding', next: 'cautiousApproach' }
+    ]
+  },
+
+  banditEncounter: {
+    text: [
+      '<p>As you approach, you see three rough-looking men barring the road. Their accents and gear mark them as highway bandits—desperate and dangerous. One notices your approach and bares crooked teeth in a hungry grin.</p>',
+      '<p class="combat-text">"That\'s a fine sword, soldier. Leave it here and you can keep walking—unless you\'d rather donate your boots as well."</p>',
+      '<p>Behind the bandits, a family cowers, and a merchant clutches his purse with trembling hands.</p>'
+    ],
+    choices: [
+      { text: 'Draw your blade and intervene', next: 'combatTutorial' },
+      { text: 'Try to negotiate for peace', next: 'negotiateBandits' },
+      { text: 'Reveal your Imperial rank and threaten them', next: 'intimidateBandits' }
+    ]
+  },
+
+  avoidTrouble: {
+    text: [
+      '<p>You skirt the scene, following a path through the roadside brush. The cries and shouts echo behind you, heavy with guilt. The Empire teaches its officers to protect the helpless, but you have a duty greater than one roadside robbery. Or so you tell yourself.</p>',
+      '<p>Yet as you walk, you hear a child cry out—a sound that lingers like a wound.</p>'
+    ],
+    choices: [
+      { text: 'Turn back and intervene after all', next: 'banditEncounter' },
+      { text: 'Keep going. The pilgrimage is your only concern.', next: 'continueJourney' }
+    ]
+  },
+
+  cautiousApproach: {
+    text: [
+      '<p>Moving with practiced caution, you slip among the shadows at the road\'s edge. The bandits shake down a merchant, an elderly couple, and a young priest. None see you yet.</p>',
+      '<p>Your soldier\'s instincts tell you that surprise could give you the upper hand, or you could wait for a perfect opening—or simply pass by, unseen.</p>'
+    ],
+    choices: [
+      { text: 'Attack from the shadows', next: 'surpriseAttack' },
+      { text: 'Call out and challenge them openly', next: 'combatTutorial' },
+      { text: 'Slip away before anyone notices you', next: 'continueJourney' }
+    ]
+  },
+
+  // Combat Tutorial stub (full combat mechanics can be expanded)
+  combatTutorial: {
+    text: [
+      '<p class="combat-text">Your hand drops to your blade. The lead bandit steps forward, arrogance fading as he notes your stance and the look in your eyes.</p>',
+      '<p>You square off, feeling the old training settle into your muscles. The first blow is yours.</p>',
+      '<p>(For demo: the fight is quick—you strike with resolve born of loss and duty.)</p>'
+    ],
+    choices: [
+      { text: 'Show mercy to a wounded bandit', next: 'showMercy' },
+      { text: 'Dispatch the bandit and move on', next: 'coldDeparture' },
+      { text: 'Search the bandits for supplies', next: 'lootBandit' }
+    ]
+  },
+
+  surpriseAttack: {
+    text: [
+      '<p>You emerge from the shadows, striking with ruthless efficiency. The first bandit falls before he can draw, and the second staggers under the blow. The leader flees into the brush. The onlookers gape in awe and fear.</p>'
+    ],
+    choices: [
+      { text: 'Help the travelers', next: 'helpTravelers' },
+      { text: 'Continue on in silence', next: 'coldDeparture' },
+      { text: 'Search the fallen bandits', next: 'lootBandit' }
+    ]
+  },
+
+  showMercy: {
+    text: [
+      '<p>You kneel beside the wounded bandit and bind his injury with a torn strip of your own cloak. The man looks up, stunned. "Why?"</p>',
+      '<p>"Because there has been enough death," you say, and turn to help the travelers.</p>'
+    ],
+    choices: [
+      { text: 'Continue your journey', next: 'afterBanditEncounter' }
+    ]
+  },
+
+  coldDeparture: {
+    text: [
+      '<p>You clean your blade on the grass and walk away, the bodies of the fallen fading into memory. The world is no gentler for your presence, but neither is it more cruel.</p>'
+    ],
+    choices: [
+      { text: 'Continue on', next: 'afterBanditEncounter' }
+    ]
+  },
+
+  lootBandit: {
+    text: [
+      '<p>You rifle through the pockets of the fallen. You find a handful of copper, a small vial of healing salve, and a stale hunk of bread. Practicality wins out over sentiment.</p>'
+    ],
+    choices: [
+      { text: 'Continue on', next: 'afterBanditEncounter' }
+    ]
+  },
+
+  helpTravelers: {
+    text: [
+      '<p>You help the shaken travelers gather their scattered goods. The old merchant presses a pouch into your hand, and the child thanks you with tearful eyes. For a moment, the burden in your heart lightens.</p>'
+    ],
+    choices: [
+      { text: 'Continue your journey', next: 'afterBanditEncounter' }
+    ]
+  },
+
+  negotiateBandits: {
+    text: [
+      '<p>"I am on a pilgrimage," you say, displaying the mask. "Take what you wish from the dead, but the living do not pay tribute to thieves."</p>',
+      '<p>The bandits hesitate, but see your scars and the grim set of your jaw. They decide your sword is more trouble than your purse is worth.</p>'
+    ],
+    choices: [
+      { text: 'Move on before they change their minds', next: 'afterBanditEncounter' }
+    ]
+  },
+
+  intimidateBandits: {
+    text: [
+      '<p>"Cayael, Third Imperial Cavalry," you announce. "Survivor of Voln. If you wish to die, draw steel."</p>',
+      '<p>The leader blanches and gestures for his men to back away. They vanish, cursing, into the roadside brush. The travelers breathe out in relief.</p>'
+    ],
+    choices: [
+      { text: 'Continue your journey', next: 'afterBanditEncounter' }
+    ]
+  },
+
+  afterBanditEncounter: {
+    text: [
+      '<p>With the danger passed, you press onward. The story of a solitary soldier—merciful or ruthless—will travel faster than you do.</p>',
+      '<p>Evening approaches, and the Road seems to shift, reality thinning around you...</p>'
+    ],
+    choices: [
+      { text: 'Experience the first Echo', next: 'firstEcho' }
+    ]
+  },
+
+  continueJourney: {
+    text: [
+      '<p>You keep walking, shutting out the cries and chaos behind you. That night, your dreams are troubled—faces lost at Voln, and the silent disappointment of those you failed to help.</p>'
+    ],
+    choices: [
+      { text: 'Continue your pilgrimage', next: 'afterEcho' }
+    ]
+  },
+
+  firstEcho: {
+    text: [
+      '<p class="location-text">The Road – Twilight</p>',
+      '<p>The air thickens. Shadows stretch and the world blurs, as if you\'ve stepped between one heartbeat and the next. Suddenly, you are not alone. A figure walks beside you—translucent, armored, its face half-familiar, half-strange.</p>',
+      '<p class="echo-text">"The wheel turns," the Echo whispers. "All roads cross, given enough time. What you carry weighs more than grief, officer."</p>'
+    ],
+    choices: [
+      { text: 'Speak to the Echo', next: 'echoConversation' },
+      { text: 'Draw your blade defensively', next: 'echoDefensive' },
+      { text: 'Try to touch the figure', next: 'echoTouch' }
+    ]
+  },
+
+  // ...CONTINUED IN NEXT PART... 
+  echoConversation: {
+    text: [
+      '<p>"Who are you?" you ask, though part of you suspects the answer.</p>',
+      '<p class="echo-text">"I am what you may become, or perhaps what you left behind. The Road remembers all who walk it. Past, present, future—all leave their echoes."</p>',
+      '<p>The Echo’s armor bears the scars of many battles, some you recognize, some you do not. Its eyes glint with a wisdom and sorrow that feels achingly familiar.</p>'
+    ],
+    choices: [
+      { text: 'Ask about Voln', next: 'echoVoln' },
+      { text: 'Ask about your future', next: 'echoFuture' },
+      { text: 'Remain silent and listen', next: 'echoWisdom' }
+    ]
+  },
+
+  echoDefensive: {
+    text: [
+      '<p>You draw your blade, the steel seeming to absorb the thickened light. The Echo regards your weapon with a look that is almost amusement.</p>',
+      '<p class="echo-text">"Steel cannot cut memory. But the instinct serves you. Not all that walks these paths means you well."</p>',
+      '<p>Shapes gather at the periphery, warriors from ages past, bandits you dispatched, soldiers you once called comrade.</p>'
+    ],
+    choices: [
+      { text: 'Sheathe your blade and speak', next: 'echoConversation' },
+      { text: 'Ask about the other phantoms', next: 'echoFuture' }
+    ]
+  },
+
+  echoTouch: {
+    text: [
+      '<p>You reach out, and your hand passes through the Echo like mist. A shock runs through you—visions not your own, loss and triumph, cities burning, lovers lost, decisions that twist history.</p>',
+      '<p>The Echo smiles with sympathy. "Every choice leaves an echo. What will yours be?"</p>'
+    ],
+    choices: [
+      { text: 'Ask what choice you must make', next: 'echoChoice' },
+      { text: 'Focus on your mission', next: 'echoMission' },
+      { text: 'Try to break free of the vision', next: 'echoEnd' }
+    ]
+  },
+
+  echoVoln: {
+    text: [
+      '<p class="echo-text">"Voln… a hinge in the Empire\'s story. Too perfect an ambush. Too many pieces aligned. The mask you carry may hold more than grief."</p>',
+      '<p>You press for details, but the Echo only shrugs. "Some truths are hidden for a reason. The Grove will know. The Green preserves."</p>'
+    ],
+    choices: [
+      { text: 'Demand a clearer answer', next: 'echoClarity' },
+      { text: 'Consider what this implies', next: 'echoThink' },
+      { text: 'Refuse riddles and move on', next: 'echoEnd' }
+    ]
+  },
+
+  echoFuture: {
+    text: [
+      '<p class="echo-text">"I see you in the Font, warning the Senate of war. I see you forging peace on the Aug border. I see you disappear into wilds, changing as the world changes."</p>',
+      '<p class="echo-text">"All futures are open until one is chosen. But the mask—its secret narrows the path."</p>'
+    ],
+    choices: [
+      { text: 'Ask about the mask’s secret', next: 'echoMaskSecret' },
+      { text: 'Focus on the Aug border', next: 'echoAug' },
+      { text: 'Inquire about transformation', next: 'echoTransformation' }
+    ]
+  },
+
+  echoWisdom: {
+    text: [
+      '<p>You listen, patient. The Echo inclines its head.</p>',
+      '<p class="echo-text">"Few know when to be still. The Road remembers, but memory is not always truth. Each Echo carries its own regret, hope, fear."</p>',
+      '<p class="echo-text">"Your mask holds more than one secret. The Green will reveal what must be known."</p>'
+    ],
+    choices: [
+      { text: 'Ask about the mask’s secret', next: 'echoMaskSecret' },
+      { text: 'Thank the Echo and move on', next: 'echoEnd' }
+    ]
+  },
+
+  echoMaskSecret: {
+    text: [
+      '<p class="echo-text">"Coordinates. Names. Betrayal at the highest level. Lyanna saw who betrayed your unit. She died for it. But the mask remembers."</p>',
+      '<p>Your heart pounds. Lyanna knew? She hid proof within the mask?</p>'
+    ],
+    choices: [
+      { text: 'Demand the betrayer’s name', next: 'echoBetrayal' },
+      { text: 'Ask how to access the truth', next: 'echoKnowledge' },
+      { text: 'Focus on reaching the Grove', next: 'echoEnd' }
+    ]
+  },
+
+  echoChoice: {
+    text: [
+      '<p class="echo-text">"The Road leads to a crossroads. After the mask is committed, your choice will shape what echoes remain. Warning, discovery, duty, or transformation—no path is perfect, but all ripple outward."</p>'
+    ],
+    choices: [
+      { text: 'Accept this', next: 'echoEnd' }
+    ]
+  },
+
+  echoMission: {
+    text: [
+      '<p>"I must reach the Grove. Nothing else matters until my promise is kept."</p>',
+      '<p class="echo-text">"Duty is your nature. But every duty gives birth to another."</p>'
+    ],
+    choices: [
+      { text: 'Prepare to move on', next: 'echoEnd' }
+    ]
+  },
+
+  echoClarity: {
+    text: [
+      '<p class="echo-text">"Look to those who gained from Voln. The mask holds their names. The Green will remember."</p>'
+    ],
+    choices: [
+      { text: 'Remember this', next: 'echoEnd' }
+    ]
+  },
+
+  echoThink: {
+    text: [
+      '<p>You reflect in silence, overwhelmed by possibility and warning.</p>',
+      '<p class="echo-text">"Think, but do not drown. Act, but do not act rashly. The balance between is wisdom."</p>'
+    ],
+    choices: [
+      { text: 'Continue', next: 'echoEnd' }
+    ]
+  },
+
+  echoAug: {
+    text: [
+      '<p class="echo-text">"The Aug are not just enemies. They flee from something older than war. Perhaps you can bridge what others would burn."</p>'
+    ],
+    choices: [
+      { text: 'Remember this', next: 'echoEnd' }
+    ]
+  },
+
+  echoTransformation: {
+    text: [
+      '<p class="echo-text">"In the wilds, the boundaries blur. Human and Other, past and future, memory and echo. Some become something new. Some call it evolution, others, abomination."</p>'
+    ],
+    choices: [
+      { text: 'Move on', next: 'echoEnd' }
+    ]
+  },
+
+  echoBetrayal: {
+    text: [
+      '<p class="echo-text">"Those who gained from your pain. Who rose in rank. Who whisper to Senators. The mask knows, and the Green keeps secrets—until it is time to speak."</p>'
+    ],
+    choices: [
+      { text: 'Accept this', next: 'echoEnd' }
+    ]
+  },
+
+  echoKnowledge: {
+    text: [
+      '<p class="echo-text">"Complete your pilgrimage. Trust the Grove. When it is time, the secret will surface."</p>'
+    ],
+    choices: [
+      { text: 'Move on', next: 'echoEnd' }
+    ]
+  },
+
+  echoEnd: {
+    text: [
+      '<p>The world snaps back to itself. The Road is quiet once more, but your mind is not.</p>',
+      '<p>Night falls, and you must decide: press on toward Uunsh, or camp beneath the uncertain sky?</p>'
+    ],
+    choices: [
+      { text: 'Make camp for the night', next: 'nightCamp' },
+      { text: 'Continue walking beneath the stars', next: 'nightMarch' }
+    ]
+  },
+
+  nightCamp: {
+    text: [
+      '<p>You find a sheltered hollow and make a meager fire. The mask rests on your knees as you eat your rations. The world is quiet, save for the susurrus of wind through ancient grass.</p>',
+      '<p>Tomorrow you will reach the crossroads of Millstand. From there, Uunsh and the Grove beckon, and perhaps, at last, answers.</p>'
+    ],
+    choices: [
+      { text: 'Sleep and wake at dawn', next: 'morningCrossroads' },
+      { text: 'Stay vigilant and keep watch', next: 'nightWatch' },
+      { text: 'Study Lyanna’s mask by firelight', next: 'maskStudy' }
+    ]
+  },
+
+  nightMarch: {
+    text: [
+      '<p>You march through the night. The Road is treacherous in darkness, but your training guides you. As dawn breaks, you see the bustle of Millstand ahead—a trading post where pilgrims and merchants gather.</p>'
+    ],
+    choices: [
+      { text: 'Rest at Millstand', next: 'morningCrossroads' }
+    ]
+  },
+
+  nightWatch: {
+    text: [
+      '<p>You sit by the embers, sleep eluding you. The Echo’s words repeat in your mind, hinting at burdens and choices still to come. Dawn finds you tired, but your blade is sharp and your resolve, sharper still.</p>'
+    ],
+    choices: [
+      { text: 'Pack up and continue', next: 'morningCrossroads' }
+    ]
+  },
+
+  maskStudy: {
+    text: [
+      '<p>In the flickering firelight, you examine Lyanna’s mask closely. Inside, nearly invisible, are a series of etched marks—coordinates, you realize. A map reference, pointing to the borderlands near Voln. Lyanna hid more than a memory within her mask.</p>'
+    ],
+    choices: [
+      { text: 'Commit the coordinates to memory', next: 'coordinatesMemorized' },
+      { text: 'Decide it’s not your concern—focus on your vow', next: 'ignoreMystery' },
+      { text: 'Plan to investigate after reaching the Grove', next: 'planInvestigation' }
+    ]
+  },
+
+  coordinatesMemorized: {
+    text: [
+      '<p>You repeat the coordinates under your breath until they burn into your memory. Whatever Lyanna found, you will carry it forward. The mystery can wait until your duty is done.</p>'
+    ],
+    choices: [
+      { text: 'Sleep until dawn', next: 'morningCrossroads' }
+    ]
+  },
+
+  ignoreMystery: {
+    text: [
+      '<p>You wrap the mask again and try to forget the secret etched inside. Some mysteries are too dangerous. Duty first—curiosity later.</p>'
+    ],
+    choices: [
+      { text: 'Sleep until dawn', next: 'morningCrossroads' }
+    ]
+  },
+
+  planInvestigation: {
+    text: [
+      '<p>You memorize the coordinates but resolve to finish your pilgrimage before chasing shadows. The dead are patient. Truth will wait a little longer.</p>'
+    ],
+    choices: [
+      { text: 'Sleep until dawn', next: 'morningCrossroads' }
+    ]
+  },
+
+  morningCrossroads: {
+    text: [
+      '<p class="location-text">Millstand Crossroads – Morning</p>',
+      '<p>The trading post bustles with life. Caravans load up for the journey north. Simia traders argue prices with local farmers. The smell of bread and smoke fills the air. You see a wagon painted with blue Simia script and a signpost pointing toward Uunsh.</p>'
+    ],
+    choices: [
+      { text: 'Approach the Simia traders', next: 'simiaEncounter' },
+      { text: 'Visit the supply post', next: 'millstandSupplies' },
+      { text: 'Continue directly to Uunsh', next: 'roadToUunsh' }
+    ]
+  },
+
+  // ...CONTINUED IN NEXT PART... 
+  simiaEncounter: {
+    text: [
+      '<p>The Simia traders watch you approach, their golden eyes sharp and curious. Their leader—a woman with tattooed arms—greets you. "Imperial soldier, carrying a mask of sorrow. We smell old grief. Heading to the Grove?"</p>',
+      '<p>You nod, and she inclines her head. "War comes again, child of iron. The Aug dig in the old places. The borderlands are restless."</p>'
+    ],
+    choices: [
+      { text: 'Ask about the Aug', next: 'simiaAugInfo' },
+      { text: 'Ask about Simia mask lore', next: 'simiaMaskLore' },
+      { text: 'Trade for supplies', next: 'simiaTrade' }
+    ]
+  },
+
+  simiaAugInfo: {
+    text: [
+      '<p>The elder’s face darkens. "The Aug move like a people who know what comes. Our far-walkers see strange lights. Their constructs speak of ‘the Rising’ and ‘the Return.’ They are afraid. That should worry your Empire more than any border skirmish."</p>'
+    ],
+    choices: [
+      { text: 'Thank the Simia and move on', next: 'roadToUunsh' }
+    ]
+  },
+
+  simiaMaskLore: {
+    text: [
+      '<p>"The mask-bond is old magic," she says. "When warriors die with secrets, the mask can remember. The Grove knows how to listen. The Green keeps all."</p>',
+      '<p>She regards the mask you carry. "Your friend hid something vital. Trust the Grove to reveal it when the time is right."</p>'
+    ],
+    choices: [
+      { text: 'Thank her and move on', next: 'roadToUunsh' }
+    ]
+  },
+
+  simiaTrade: {
+    text: [
+      '<p>The Simia offer healing herbs, dried fruit, and a charm of warding. You trade what coins you can spare for a handful of supplies and the promise of safe passage.</p>',
+      '<p>"May the Road be kind," the elder says. "May you find what you seek."</p>'
+    ],
+    choices: [
+      { text: 'Continue to Uunsh', next: 'roadToUunsh' }
+    ]
+  },
+
+  millstandSupplies: {
+    text: [
+      '<p>The supply post is run by a matronly woman. "Pilgrim to the Grove?" At your nod, she fills your pack with fresh water, hard bread, and a bottle of grave-wine for the ceremony. She only takes a few coins in payment.</p>',
+      '<p>"My daughter is a cavalry scout, somewhere on the frontier," she says quietly. "Walk safely."</p>'
+    ],
+    choices: [
+      { text: 'Thank her and move on', next: 'roadToUunsh' }
+    ]
+  },
+
+  roadToUunsh: {
+    text: [
+      '<p class="location-text">The Last Road – Day</p>',
+      '<p>With Millstand behind you, the Road to Uunsh grows busier but also more tense. Merchants glance over their shoulders, and city guards ride patrol. The city’s white walls rise ahead, and beyond them, the living monument of the Grove of Remembrance.</p>'
+    ],
+    choices: [
+      { text: 'Enter the city', next: 'uunshGates' },
+      { text: 'Circle wide to approach the Grove directly', next: 'groveApproach' }
+    ]
+  },
+
+  uunshGates: {
+    text: [
+      '<p class="location-text">Uunsh – The Threshold City</p>',
+      '<p>The city gates are watched by Imperial sentries. At the sight of your military badge and the mask, they let you pass with a nod and a murmured prayer. The city is a blur of color and sound, but you push through to the Grove at its heart.</p>'
+    ],
+    choices: [
+      { text: 'Go to the Grove of Remembrance', next: 'groveArrival' }
+    ]
+  },
+
+  groveApproach: {
+    text: [
+      '<p>You follow a quiet pilgrim path around the city. Other mourners walk with you, all bearing masks or tokens for the Grove. There is comfort in shared silence as you reach the living woods at the city’s center.</p>'
+    ],
+    choices: [
+      { text: 'Enter the Grove', next: 'groveArrival' }
+    ]
+  },
+
+  groveArrival: {
+    text: [
+      '<p class="location-text">The Grove of Remembrance</p>',
+      '<p>The Grove is ancient, the trees impossibly tall, their roots braided with hundreds of masks from ages past. Here, the Empire’s honored dead are given to the Green. The air is thick with the scent of moss, earth, and memories.</p>',
+      '<p>An elderly priest in robes of living green waits for you. "You carry a heavy burden, child of Voln."</p>'
+    ],
+    choices: [
+      { text: 'Present the mask for commitment', next: 'maskCeremony' },
+      { text: 'Ask about the ritual', next: 'ritualExplanation' },
+      { text: 'Take a moment to prepare yourself', next: 'finalPreparation' }
+    ]
+  },
+
+  ritualExplanation: {
+    text: [
+      '<p>The priest speaks softly. "Commitment is simple in form, profound in meaning. You speak the name of the fallen and what they meant. The Green remembers all. In time, the mask becomes part of the living wood, nourishing the Grove—and the world."</p>'
+    ],
+    choices: [
+      { text: 'Proceed with the ceremony', next: 'maskCeremony' }
+    ]
+  },
+
+  finalPreparation: {
+    text: [
+      '<p>You kneel among the roots, the mask in your lap. You remember Lyanna’s laughter, her courage, her fierce loyalty. The trees seem to breathe with you, waiting.</p>',
+      '<p>"I’m sorry I survived," you whisper. "But I’ve brought you home."</p>'
+    ],
+    choices: [
+      { text: 'Complete the ceremony', next: 'maskCeremony' }
+    ]
+  },
+
+  maskCeremony: {
+    text: [
+      '<p>You unwrap the mask with reverence. The priest nods. "Speak her name."</p>',
+      '<p>"Lyanna Thrace, Third Imperial Cavalry. Fell at Voln, saving her unit. She… she saved me."</p>',
+      '<p>The priest chants, and as the ritual ends, you feel the air shift. For a heartbeat, you see Lyanna’s spirit, smiling and proud. "Promise kept, Cay," her voice whispers. "Now live."</p>'
+    ],
+    choices: [
+      { text: 'Finish the ceremony', next: 'ceremonyComplete' }
+    ]
+  },
+
+  ceremonyComplete: {
+    text: [
+      '<p>The mask is placed among the roots. Tiny vines already curl around it, claiming it for the Green. Your heart feels lighter, but also emptier—a burden shifted, but not erased.</p>',
+      '<p>The priest’s eyes are kind. "The pilgrimage ends, but the journey does not. What will you do now?"</p>'
+    ],
+    choices: [
+      { text: 'Travel to the Font and warn the Senate', next: 'endingFont' },
+      { text: 'Investigate the Aug borderlands', next: 'endingAug' },
+      { text: 'Return to military service', next: 'endingMilitary' },
+      { text: 'Disappear into the wilds', next: 'endingWild' }
+    ]
+  },
+
+  // ...CONTINUED IN FINAL PART...
+  endingFont: {
+    text: [
+      '<p class="location-text">Epilogue – The Path of Warning</p>',
+      '<p>You journey to the Font, heart of the Empire. Your warnings and the mask’s secret grant you audience with the Senate’s Defense Council. Skeptics abound, but some listen. When the Sundering War begins, the Empire is not wholly unprepared. History remembers you as Cayael the Herald, the one who gave warning.</p>',
+      '<p class="echo-text">THE END</p>'
+    ],
+    choices: [
+      { text: 'Begin again', next: 'start' }
+    ]
+  },
+
+  endingAug: {
+    text: [
+      '<p class="location-text">Epilogue – The Path of Discovery</p>',
+      '<p>You travel north, seeking truths in the contested lands. The Aug are not simply invaders—they are fleeing something darker. You become a bridge between worlds. The war still comes, but you plant seeds of peace that may one day bloom.</p>',
+      '<p class="echo-text">THE END</p>'
+    ],
+    choices: [
+      { text: 'Begin again', next: 'start' }
+    ]
+  },
+
+  endingMilitary: {
+    text: [
+      '<p class="location-text">Epilogue – The Path of Duty</p>',
+      '<p>You return to the rebuilt Third Cavalry. Your survival at Voln and pilgrimage grant you new rank and new burdens. Your leadership shapes a generation who fight not for glory, but for each other. History remembers you as Cayael the Unbroken.</p>',
+      '<p class="echo-text">THE END</p>'
+    ],
+    choices: [
+      { text: 'Begin again', next: 'start' }
+    ]
+  },
+
+  endingWild: {
+    text: [
+      '<p class="location-text">Epilogue – The Path of Transformation</p>',
+      '<p>You walk into the wilds, past the reach of Empire. Echoes grow stronger, boundaries thinner. You become something more—and less—than human. When war comes, your unseen hand tips the scales, but your name passes into myth and memory.</p>',
+      '<p class="echo-text">THE END</p>'
+    ],
+    choices: [
+      { text: 'Begin again', next: 'start' }
+    ]
+  }
+};
+
+// --- MECHANICS: EFFECTS & UI ---
+function displayScene(scene) {
+  if (scene.effects && scene.effects.startCombat) {
+    // Placeholder: for future combat
+    alert('Combat system not implemented in this cut.');
+    return;
+  }
+  const storyDiv = document.getElementById('story-text');
+  const choicesDiv = document.getElementById('choices');
+  storyDiv.innerHTML = '';
+  choicesDiv.innerHTML = '';
+  scene.text.forEach(paragraph => { storyDiv.innerHTML += paragraph; });
+
+  if (scene.effects) applyEffects(scene.effects);
+
+  scene.choices.forEach(choice => {
+    const button = document.createElement('div');
+    button.className = 'choice-button';
+    button.textContent = choice.text;
+    button.onclick = () => {
+      if (typeof choice.next === 'function') {
+        choice.next();
+      } else {
+        gameState.currentScene = choice.next;
+        displayScene(scenes[choice.next]);
+      }
+    };
+    choicesDiv.appendChild(button);
+  });
+
+  updateDisplay();
+}
+
+function applyEffects(effects) {
+  if (effects.health) gameState.health = Math.max(0, Math.min(gameState.maxHealth, gameState.health + effects.health));
+  if (effects.fatigue) gameState.fatigue = Math.max(0, gameState.fatigue + effects.fatigue);
+  if (effects.honor) gameState.honor = Math.max(0, gameState.honor + effects.honor);
+
+  if (effects.skills) {
+    Object.keys(effects.skills).forEach(skill => {
+      gameState.skills[skill] = (gameState.skills[skill] || 0) + effects.skills[skill];
+    });
+  }
+  if (effects.flags) {
+    Object.keys(effects.flags).forEach(flag => {
+      gameState.flags[flag] = effects.flags[flag];
+    });
+  }
+  if (effects.inventory) {
+    effects.inventory.forEach(item => {
+      if (!gameState.inventory.includes(item)) {
+        gameState.inventory.push(item);
+      }
+    });
+  }
+}
+
+function updateDisplay() {
+  document.getElementById('health').textContent = gameState.health;
+  document.getElementById('fatigue').textContent = gameState.fatigue;
+  document.getElementById('honor').textContent = gameState.honor;
+}
+
+// --- INITIALIZE ---
+window.onload = () => {
+  displayScene(scenes[gameState.currentScene]);
+};
+</script>
 </body>
 </html>
