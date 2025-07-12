@@ -2,6 +2,8 @@
 
 Echo of Cayael is a small text-based adventure prototype for the "Worlds Within" project. It combines simple combat with choose-your-own-path storytelling, all running entirely in the browser.
 
+The included combat system is intentionally lightweight. Encounters are resolved with randomized damage rolls and serve as a proof of concept rather than a complete RPG battle system.
+
 ## Getting Started
 
 1. Download or clone this repository.
