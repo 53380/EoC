@@ -7,6 +7,10 @@ const state = {
   honor: 50
 };
 
+const enemies = {
+  shade: { name: 'wandering shade', health: 20 }
+};
+
 const scenes = {
   intro: {
     text: [
@@ -31,7 +35,27 @@ const scenes = {
     text: [
       'The barren land stretches before you, whispering of battles yet to come.'
     ],
-    choices: []
+    choices: [
+      { text: 'Seek out the lurking shade', next: 'battle' },
+      { text: 'Return to camp', next: 'intro' }
+    ]
+  },
+  battle: {
+    text: [
+      'A shadowy figure emerges from the gloom.'
+    ],
+    choices: [
+      { text: 'Fight', combat: 'shade', next: 'victory' },
+      { text: 'Flee', next: 'trail' }
+    ]
+  },
+  victory: {
+    text: [
+      'The shade dissipates, leaving silence behind.'
+    ],
+    choices: [
+      { text: 'Continue down the trail', next: 'trail' }
+    ]
   }
 };
 
@@ -41,6 +65,40 @@ function updateStats() {
   document.getElementById('momentum').textContent = state.momentum;
   document.getElementById('fatigue').textContent = state.fatigue;
   document.getElementById('honor').textContent = state.honor;
+}
+
+function startCombat(enemyKey, nextScene) {
+  const enemy = enemies[enemyKey];
+  if (!enemy) {
+    alert('Combat encounter missing enemy data.');
+    if (nextScene) renderScene(nextScene);
+    return;
+  }
+
+  let enemyHealth = enemy.health;
+  const log = [];
+
+  while (enemyHealth > 0 && state.health > 0) {
+    const playerDamage = Math.ceil(Math.random() * 6);
+    enemyHealth -= playerDamage;
+    log.push(`You strike the ${enemy.name} for ${playerDamage} damage.`);
+    if (enemyHealth <= 0) break;
+    const enemyDamage = Math.ceil(Math.random() * 4);
+    state.health -= enemyDamage;
+    log.push(`The ${enemy.name} hits you for ${enemyDamage}.`);
+  }
+
+  if (state.health <= 0) {
+    log.push('You were defeated.');
+  } else {
+    log.push(`You defeated the ${enemy.name}!`);
+  }
+
+  alert(log.join('\n'));
+  updateStats();
+  if (state.health > 0 && nextScene) {
+    renderScene(nextScene);
+  }
 }
 
 function renderScene(key) {
@@ -55,7 +113,13 @@ function renderScene(key) {
     const btn = document.createElement('button');
     btn.className = 'choice-button';
     btn.textContent = choice.text;
-    btn.addEventListener('click', () => renderScene(choice.next));
+    btn.addEventListener('click', () => {
+      if (choice.combat) {
+        startCombat(choice.combat, choice.next);
+      } else {
+        renderScene(choice.next);
+      }
+    });
     choiceContainer.appendChild(btn);
   });
 }
