@@ -1,12 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+/* Removed external Google Fonts import. Using system font fallbacks instead. */
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Crimson Text', serif; background:linear-gradient(to bottom,#1a1a2e,#0f0f1e);
+body { font-family:'Crimson Text', 'Times New Roman', Times, serif; background:linear-gradient(to bottom,#1a1a2e,#0f0f1e);
   color:#e0d0b0; min-height:100vh; display:flex; justify-content:center; align-items:center;
   padding:20px; font-size:18px; line-height:1.6; }
 #game-container { max-width:900px; width:100%; background:rgba(20,20,35,0.9);
   border:2px solid #4a3a28; border-radius:10px; padding:40px;
   box-shadow:0 10px 40px rgba(0,0,0,0.8); }
-#title { font-family:'Cinzel', serif; font-size:48px; text-align:center;
+#title { font-family:'Cinzel', 'Georgia', 'Times New Roman', Times, serif; font-size:48px; text-align:center;
   margin-bottom:10px; color:#f0d090; text-shadow:2px 2px 4px rgba(0,0,0,0.8);
   font-weight:600; }
 #subtitle { text-align:center; font-style:italic; margin-bottom:30px;
@@ -21,7 +21,7 @@ body { font-family:'Crimson Text', serif; background:linear-gradient(to bottom,#
 #choices { display:flex; flex-direction:column; gap:15px; }
 .choice-button { background:linear-gradient(to right,#3a2a1a,#2a1a0a);
   border:1px solid #6a5a4a; color:#e0d0b0; padding:15px 25px;
-  cursor:pointer; transition:all .3s; font-family:'Crimson Text', serif;
+  cursor:pointer; transition:all .3s; font-family:'Crimson Text', 'Times New Roman', Times, serif;
   font-size:18px; border-radius:5px; text-align:left; }
 .choice-button:hover { background:linear-gradient(to right,#4a3a2a,#3a2a1a);
   border-color:#8a7a6a; transform:translateX(5px);
@@ -36,7 +36,7 @@ body { font-family:'Crimson Text', serif; background:linear-gradient(to bottom,#
 .inventory-item { color:#a090d0; font-size:14px; margin-bottom:5px; }
 .combat-text { color:#ff9090; font-weight:bold; }
 .location-text { color:#90d0ff; font-weight:600; text-align:center;
-  margin-bottom:20px; font-size:24px; font-family:'Cinzel', serif; }
+  margin-bottom:20px; font-size:24px; font-family:'Cinzel', 'Georgia', 'Times New Roman', Times, serif; }
 @media (max-width:768px) {
   #stats { position:static; margin-bottom:20px; }
   #title { font-size:36px; }
