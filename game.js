@@ -137,6 +137,7 @@ function renderScene(key) {
     });
     choiceContainer.appendChild(btn);
   });
+  updateStats();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
