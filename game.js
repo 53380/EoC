@@ -4,7 +4,12 @@ const state = {
   er: 0,
   momentum: 10,
   fatigue: 0,
-  honor: 50
+  honor: 50,
+  inventory: [
+    "Fallen Comrade's Mask",
+    'Infantry Blade',
+    'Meager Rations'
+  ]
 };
 
 const enemies = {
@@ -65,6 +70,19 @@ function updateStats() {
   document.getElementById('momentum').textContent = state.momentum;
   document.getElementById('fatigue').textContent = state.fatigue;
   document.getElementById('honor').textContent = state.honor;
+  updateInventory();
+}
+
+function updateInventory() {
+  const container = document.getElementById('inventory');
+  if (!container) return;
+  container.innerHTML = '<div class="stat-label">Inventory:</div>';
+  state.inventory.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'inventory-item';
+    div.textContent = `\u2022 ${item}`;
+    container.appendChild(div);
+  });
 }
 
 function startCombat(enemyKey, nextScene) {
