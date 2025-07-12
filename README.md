@@ -1,12 +1,12 @@
-# Echo of Cayeal
+# Echo of Cayael
 A text-based adventure prototype set in the Worlds Within universe. The repository currently consists of a single HTML file.
 
 ## Opening the Game
 
 1. Clone or download this repository.
 2. Open the folder in your file manager.
-3. Double-click `Echo of Cayeal.html` to launch it in your default web browser (or right-click and choose **Open with** and select your browser).
-   - On Linux you can also run `xdg-open 'Echo of Cayeal.html'` from the terminal.
+3. Double-click `Echo of Cayael.html` to launch it in your default web browser (or right-click and choose **Open with** and select your browser).
+   - On Linux you can also run `xdg-open 'Echo of Cayael.html'` from the terminal.
    - Use `start` on Windows or `open` on macOS if you prefer the command line.
 
 The page is self-contained and does not require a web server.
