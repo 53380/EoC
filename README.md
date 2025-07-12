@@ -1,5 +1,5 @@
-# Echo of Cayael
-A text-based adventure prototype set in the Worlds Within universe. The project currently consists of a single HTML file.
+# Echo of Cayeal
+A text-based adventure prototype set in the Worlds Within universe. The repository currently consists of a single HTML file.
 
 ## Opening the Game
 
