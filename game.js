@@ -4,7 +4,8 @@ const state = {
   er: 0,
   momentum: 10,
   fatigue: 0,
-  honor: 50
+  honor: 50,
+  inCombat: false
 };
 
 const enemies = {
@@ -65,9 +66,22 @@ function updateStats() {
   document.getElementById('momentum').textContent = state.momentum;
   document.getElementById('fatigue').textContent = state.fatigue;
   document.getElementById('honor').textContent = state.honor;
+
+  const erDisplay = document.getElementById('er-display');
+  const momentumDisplay = document.getElementById('momentum-display');
+
+  if (state.inCombat) {
+    erDisplay.style.display = 'block';
+    momentumDisplay.style.display = 'block';
+  } else {
+    erDisplay.style.display = 'none';
+    momentumDisplay.style.display = 'none';
+  }
 }
 
 function startCombat(enemyKey, nextScene) {
+  state.inCombat = true;
+  updateStats();
   const enemy = enemies[enemyKey];
   if (!enemy) {
     alert('Combat encounter missing enemy data.');
@@ -95,6 +109,7 @@ function startCombat(enemyKey, nextScene) {
   }
 
   alert(log.join('\n'));
+  state.inCombat = false;
   updateStats();
   if (state.health > 0 && nextScene) {
     renderScene(nextScene);
