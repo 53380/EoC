@@ -4,52 +4,7 @@
   <meta charset="UTF‑8">
   <meta name="viewport" content="width=device-width, initial‑scale=1.0">
   <title>The Echo of Cayael</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Crimson Text', serif; background:linear-gradient(to bottom,#1a1a2e,#0f0f1e);
-      color:#e0d0b0; min-height:100vh; display:flex; justify-content:center; align-items:center;
-      padding:20px; font-size:18px; line-height:1.6; }
-    #game-container { max-width:900px; width:100%; background:rgba(20,20,35,0.9);
-      border:2px solid #4a3a28; border-radius:10px; padding:40px;
-      box-shadow:0 10px 40px rgba(0,0,0,0.8); }
-    #title { font-family:'Cinzel', serif; font-size:48px; text-align:center;
-      margin-bottom:10px; color:#f0d090; text-shadow:2px 2px 4px rgba(0,0,0,0.8);
-      font-weight:600; }
-    #subtitle { text-align:center; font-style:italic; margin-bottom:30px;
-      color:#b09070; font-size:20px; }
-    #story-text { margin-bottom:30px; padding:20px;
-      background:rgba(0,0,0,0.3); border-radius:5px; min-height:200px; }
-    #story-text p { margin-bottom:15px; text-indent:30px; }
-    #story-text p:first-child { text-indent:0; }
-    .echo-text { font-style:italic; color:#a090d0; border-left:3px solid #6050a0;
-      padding-left:15px; margin:20px 0; }
-    .flashback-text { color:#d0a080; font-style:italic; opacity:0.9; }
-    #choices { display:flex; flex-direction:column; gap:15px; }
-    .choice-button { background:linear-gradient(to right,#3a2a1a,#2a1a0a);
-      border:1px solid #6a5a4a; color:#e0d0b0; padding:15px 25px;
-      cursor:pointer; transition:all .3s; font-family:'Crimson Text', serif;
-      font-size:18px; border-radius:5px; text-align:left; }
-    .choice-button:hover { background:linear-gradient(to right,#4a3a2a,#3a2a1a);
-      border-color:#8a7a6a; transform:translateX(5px);
-      box-shadow:0 5px 15px rgba(0,0,0,0.5); }
-    #stats { position:fixed; top:20px; right:20px;
-      background:rgba(20,20,35,0.95); border:1px solid #4a3a28;
-      padding:15px; border-radius:5px; font-size:14px; min-width:200px; }
-    .stat-item { margin-bottom:8px; display:flex; justify-content:space-between; }
-    .stat-label { color:#b09070; }
-    .stat-value { color:#f0d090; font-weight:600; }
-    #inventory { margin-top:15px; padding-top:15px; border-top:1px solid #4a3a28; }
-    .inventory-item { color:#a090d0; font-size:14px; margin-bottom:5px; }
-    .combat-text { color:#ff9090; font-weight:bold; }
-    .location-text { color:#90d0ff; font-weight:600; text-align:center;
-      margin-bottom:20px; font-size:24px; font-family:'Cinzel', serif; }
-    @media (max-width:768px) {
-      #stats { position:static; margin-bottom:20px; }
-      #title { font-size:36px; }
-      #game-container { padding:20px; }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="game-container">
@@ -81,10 +36,6 @@
       <div class="inventory-item">• Meager Rations</div>
     </div>
   </div>
-  <script>
-    // Game state & mechanics (unchanged, preserve your combat and UI logic) ...
-    // [Insert all your JavaScript code here in full
-    // — unchanged, except ensure narrative updates from provided scenes are in the `scenes` object.]
-  </script>
+  <script src="game.js"></script>
 </body>
 </html>
