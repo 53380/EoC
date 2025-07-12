@@ -86,6 +86,7 @@ function updateStats() {
   updateInventory();
 }
 
+// Refresh the inventory list displayed in the stats panel
 function updateInventory() {
   const container = document.getElementById('inventory');
   if (!container) return;
