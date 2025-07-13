@@ -4,7 +4,12 @@ const state = {
   er: 0,
   momentum: 10,
   fatigue: 0,
-  honor: 50
+  honor: 50,
+  inCombat: false
+};
+
+const enemies = {
+  shade: { name: 'wandering shade', health: 20 }
 };
 
 const scenes = {
@@ -31,7 +36,27 @@ const scenes = {
     text: [
       'The barren land stretches before you, whispering of battles yet to come.'
     ],
-    choices: []
+    choices: [
+      { text: 'Seek out the lurking shade', next: 'battle' },
+      { text: 'Return to camp', next: 'intro' }
+    ]
+  },
+  battle: {
+    text: [
+      'A shadowy figure emerges from the gloom.'
+    ],
+    choices: [
+      { text: 'Fight', combat: 'shade', next: 'victory' },
+      { text: 'Flee', next: 'trail' }
+    ]
+  },
+  victory: {
+    text: [
+      'The shade dissipates, leaving silence behind.'
+    ],
+    choices: [
+      { text: 'Continue down the trail', next: 'trail' }
+    ]
   }
 };
 
@@ -41,6 +66,54 @@ function updateStats() {
   document.getElementById('momentum').textContent = state.momentum;
   document.getElementById('fatigue').textContent = state.fatigue;
   document.getElementById('honor').textContent = state.honor;
+
+  const erDisplay = document.getElementById('er-display');
+  const momentumDisplay = document.getElementById('momentum-display');
+
+  if (state.inCombat) {
+    erDisplay.style.display = 'block';
+    momentumDisplay.style.display = 'block';
+  } else {
+    erDisplay.style.display = 'none';
+    momentumDisplay.style.display = 'none';
+  }
+}
+
+function startCombat(enemyKey, nextScene) {
+  state.inCombat = true;
+  updateStats();
+  const enemy = enemies[enemyKey];
+  if (!enemy) {
+    alert('Combat encounter missing enemy data.');
+    if (nextScene) renderScene(nextScene);
+    return;
+  }
+
+  let enemyHealth = enemy.health;
+  const log = [];
+
+  while (enemyHealth > 0 && state.health > 0) {
+    const playerDamage = Math.ceil(Math.random() * 6);
+    enemyHealth -= playerDamage;
+    log.push(`You strike the ${enemy.name} for ${playerDamage} damage.`);
+    if (enemyHealth <= 0) break;
+    const enemyDamage = Math.ceil(Math.random() * 4);
+    state.health -= enemyDamage;
+    log.push(`The ${enemy.name} hits you for ${enemyDamage}.`);
+  }
+
+  if (state.health <= 0) {
+    log.push('You were defeated.');
+  } else {
+    log.push(`You defeated the ${enemy.name}!`);
+  }
+
+  alert(log.join('\n'));
+  state.inCombat = false;
+  updateStats();
+  if (state.health > 0 && nextScene) {
+    renderScene(nextScene);
+  }
 }
 
 function renderScene(key) {
@@ -55,9 +128,16 @@ function renderScene(key) {
     const btn = document.createElement('button');
     btn.className = 'choice-button';
     btn.textContent = choice.text;
-    btn.addEventListener('click', () => renderScene(choice.next));
+    btn.addEventListener('click', () => {
+      if (choice.combat) {
+        startCombat(choice.combat, choice.next);
+      } else {
+        renderScene(choice.next);
+      }
+    });
     choiceContainer.appendChild(btn);
   });
+  updateStats();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
