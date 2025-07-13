@@ -43,6 +43,14 @@ body { font-family:'Crimson Text', 'Times New Roman', Times, serif; background:l
 #combat-options { display:flex; flex-wrap:wrap; }
 .location-text { color:#90d0ff; font-weight:600; text-align:center;
   margin-bottom:20px; font-size:24px; font-family:'Cinzel', 'Georgia', 'Times New Roman', Times, serif; }
+.system-message { color:#5aff9d; font-style:italic; margin:10px 0; padding:10px; background-color:rgba(90,255,157,0.1); border-left:3px solid #5aff9d; }
+.combat-message { color:#ff5a5a; font-weight:bold; margin:10px 0; }
+.branch-message { color:#f8e82e; font-style:italic; margin:10px 0; padding:10px; background-color:rgba(248,232,46,0.1); border-left:3px solid #f8e82e; }
+.enemy-status { margin-bottom:10px; padding:10px; background-color:rgba(0,0,0,0.3); border-radius:3px; }
+.choice-cost { float:right; color:#5a9dff; font-size:14px; }
+.choice-effect { font-size:13px; color:#aaa; font-style:italic; }
+.choice-button:disabled { opacity:0.5; cursor:not-allowed; }
+.choice-button:disabled:hover { transform:none; background:linear-gradient(to right,#3a2a1a,#2a1a0a); border-color:#6a5a4a; }
 @media (max-width:768px) {
   #stats { position:static; margin-bottom:20px; }
   #title { font-size:36px; }
