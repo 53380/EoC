@@ -310,10 +310,14 @@ const scenes = {
   // Newly added placeholders for missing scenes
   afterCeremony: {
     text: [
-      '<p>The ceremony concludes and a solemn calm settles over the Grove.</p>'
+      '<p>The ritual ends with a low thrum from the Green as the last echoes of your comrade\'s memories fade.</p>',
+      '<p>The gathered witnesses watch you expectantly. News of a conspiracy has unsettled them, and they look to you for direction.</p>',
+      '<p>Your vow to the dead is fulfilled, but the living still need your aid. Where will you turn next?</p>'
     ],
     choices: [
-      { text: 'Consider your next move', next: 'leavingChoice' }
+      { text: 'Seek Commander Thrace at the Font', next: 'afterCeremonyFont' },
+      { text: 'Search the Midnight Archive for answers', next: 'afterCeremonyArchive' },
+      { text: 'Leave Uunsh behind while you still can', next: 'epilogue' }
     ]
   },
 
@@ -338,10 +342,12 @@ const scenes = {
 
   combatStart: {
     text: [
-      '<p>Bandits leap from the shadows. You ready your blade.</p>'
+      '<p>A trio of armed thugs step from the shadows, blocking your path.</p>',
+      '<p>\"Hand over the mask, and maybe you walk away,\" their leader sneers. Their movements are too precise for common bandits&mdash;someone sent them.</p>'
     ],
     choices: [
-      { text: 'Fight', next: 'urgentWarning', combat: 'bandits' }
+      { text: 'Stand and fight', next: 'urgentWarning', combat: 'bandits' },
+      { text: 'Try to slip past and flee', next: 'hastyEscape' }
     ]
   },
 
@@ -365,10 +371,14 @@ const scenes = {
 
   fontVisit: {
     text: [
-      '<p>At the Font, priests listen to your warnings with grave concern.</p>'
+      '<p>The soaring arches of the Font echo with solemn chants as you arrive.</p>',
+      '<p>You recount the vision and the plot against Uunsh. The priests exchange worried glances, unsure how to proceed.</p>',
+      '<p>They offer what aid they can but urge you to act quickly before fear turns to panic.</p>'
     ],
     choices: [
-      { text: 'Take your message to Thrace', next: 'urgentWarning' }
+      { text: 'Seek Commander Thrace', next: 'urgentWarning' },
+      { text: 'Return to the Grove for guidance', next: 'groveApproach' },
+      { text: 'Consult the Midnight Archive', next: 'archiveSearch' }
     ]
   },
 
