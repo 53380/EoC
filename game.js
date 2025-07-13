@@ -2,6 +2,7 @@
 const state = {
   scene: 'start',
   health: 100,
+  maxHealth: 100,
   fatigue: 0,
   honor: 50,
   inventory: ['Fallen Comrade\'s Mask', 'Infantry Blade', 'Meager Rations'],
@@ -17,10 +18,45 @@ const state = {
   enemy: null,
   combatPhase: null,
   er: 0,
+  maxER: 100,
   momentum: 10,
-  combo: 0,
-  damageMultiplier: 1,
-  nextScene: null
+  maxMomentum: 30,
+  nextScene: null,
+  skills: {
+    infantry: 1,
+    lightCavalry: 0,
+    heavyCavalry: 0
+  },
+  currentVerb: null,
+  baseDamage: 10,
+  incomingMultiplier: 1.0,
+  comboCount: 0,
+  abilities: {
+    attack: { name: 'Soldier\'s Strike', outMulti: 1.0, inMulti: 1.0 },
+    defend: { name: 'Infantry Guard', outMulti: 0.6, inMulti: 0.675 },
+    control: { name: 'Binding Maneuver', outMulti: 0.6, inMulti: 0.775, cc: 1.25 }
+  }
+};
+
+const branches = {
+  attack: [
+    { name: 'Aggressive Attack', flavor: 'Overwhelming Force', effect: 'Maximum damage, but leaves you exposed', outMulti: 1.5, inMulti: 1.5 },
+    { name: 'Aggressive Defense', flavor: 'Balanced Assault', effect: 'Moderate damage with defensive stance', outMulti: 0.8, inMulti: 0.8 },
+    { name: 'Aggressive Control', flavor: 'Stunning Strike', effect: 'Good damage with brief stun', outMulti: 1.2, inMulti: 0.9, cc: 1.0 },
+    { name: 'Special Attack', flavor: 'Cavalry Charge Memory', effect: 'Channel the fury of the Third Cavalry', outMulti: 2.0, inMulti: 1.0, erCost: 40, isSpecial: true }
+  ],
+  defend: [
+    { name: 'Safe Attack', flavor: 'Counter Strike', effect: 'Light damage from defensive position', outMulti: 0.65, inMulti: 0.7 },
+    { name: 'Heavy Defense', flavor: 'Fortress Stance', effect: 'Maximum protection, minimal offense', outMulti: 0.5, inMulti: 0.5 },
+    { name: 'Safe Control', flavor: 'Binding Guard', effect: 'Defensive control with protection', outMulti: 0.45, inMulti: 0.68, cc: 1.1 },
+    { name: 'Special Defense', flavor: 'Iron Discipline', effect: 'Years of training make you untouchable', outMulti: 0, inMulti: 0.1, erCost: 40, isSpecial: true }
+  ],
+  control: [
+    { name: 'Attacking Control', flavor: 'Disabling Strike', effect: 'Damage with short control', outMulti: 0.75, inMulti: 0.8, cc: 0.9 },
+    { name: 'Defensive Control', flavor: 'Tactical Binding', effect: 'Balanced control and protection', outMulti: 0.6, inMulti: 0.775, cc: 1.25 },
+    { name: 'Heavy Control', flavor: 'Complete Immobilization', effect: 'Extended control duration', outMulti: 0.725, inMulti: 0.8, cc: 1.75 },
+    { name: 'Special Control', flavor: "Officer's Command", effect: 'Your authority freezes them in place', outMulti: 1.2, inMulti: 0.5, cc: 2.0, erCost: 40, isSpecial: true }
+  ]
 };
 
 // Basic enemy templates for the prototype combat system
@@ -401,21 +437,13 @@ const scenes = {
     ]
   },
 
-  groveApproach: {
-    text: [
-      '<p>You arrive at the Grove where the Green awaits your comrade\'s mask.</p>'
-    ],
-    choices: [
-      { text: 'Place the mask', next: 'placeTheMask' }
-    ]
-  },
 
   morningRoutine: {
     text: [
       '<p>You pack up camp and set out toward Uunsh.</p>'
     ],
     choices: [
-      { text: 'Continue', next: 'groveApproach' }
+      { text: 'Continue', next: 'roadWalk1' }
     ]
   },
 
@@ -585,6 +613,288 @@ const scenes = {
     ]
   },
 
+  // New narrative scenes
+  banditVictory: {
+    text: [
+      '<p>The bandit leader falls, clutching his wounds. His companions flee into the wilderness, leaving their leader to his fate.</p>',
+      '<p>The other travelers slowly emerge from their hiding places, looking at you with a mixture of gratitude and fear. You\'ve saved them, but at what cost to your own soul?</p>'
+    ],
+    choices: [
+      { text: 'Help the wounded bandit', next: 'showMercy' },
+      { text: 'Check on the travelers', next: 'helpTravelers' },
+      { text: 'Leave immediately', next: 'coldDeparture' },
+      { text: 'Search the bandit', next: 'lootBandit' }
+    ]
+  },
+
+  banditDefeat: {
+    text: [
+      '<p>You fall to one knee, overwhelmed. The bandits, sensing weakness, close in—but suddenly freeze.</p>',
+      '<p>"Enough!" The elderly merchant steps forward, holding a purse. "Take this and go. No more blood today."</p>',
+      '<p>The bandits snatch the gold and flee. The merchant helps you to your feet. "One kindness deserves another, soldier."</p>'
+    ],
+    choices: [
+      { text: 'Thank the merchant', next: 'afterBanditEncounter' },
+      { text: 'Refuse their help proudly', next: 'afterBanditEncounter' }
+    ],
+    effects: { health: -10 }
+  },
+
+  combatTutorial: {
+    text: [
+      '<p class="combat-text">Your hand moves to your blade with practiced ease. Years of training take over as you shift into a combat stance—weight balanced, blade held low but ready.</p>',
+      '<p>"Mistake," you say quietly.</p>',
+      '<p>The bandits hesitate. They expected fear, not the cold confidence of a trained Imperial officer.</p>'
+    ],
+    choices: [
+      { text: 'Begin Combat', next: 'afterBanditEncounter', combat: 'bandits' }
+    ]
+  },
+
+  roadWalk1: {
+    text: [
+      '<p class="location-text">The Road - Morning</p>',
+      '<p>The Road beneath your feet is ancient, its stones worn smooth by countless pilgrims, merchants, and armies.</p>',
+      '<p>As the sun climbs higher, you pass other travelers. Most give you a wide berth when they notice your military bearing.</p>',
+      '<p>Ahead, you notice a disturbance. Several travelers have stopped, clustering nervously at the roadside.</p>'
+    ],
+    choices: [
+      { text: 'Investigate the disturbance', next: 'banditEncounter' },
+      { text: 'Avoid the crowd and continue walking', next: 'avoidTrouble' },
+      { text: 'Approach cautiously and observe', next: 'cautiousApproach' }
+    ]
+  },
+
+  firstEcho: {
+    text: [
+      '<p class="location-text">The Road - Twilight</p>',
+      '<p>As evening approaches, the air grows thick with otherworldly tension. You feel a strange pulling sensation.</p>',
+      '<p class="echo-text">Suddenly, the world shifts. You are no longer alone on the Road. A figure walks beside you—translucent, shimmering like heat mirages. Another Cayael, on another pilgrimage.</p>',
+      '<p class="echo-text">"The wheel turns," the Echo says. "We have walked this road before. We will walk it again. Until the pattern breaks."</p>'
+    ],
+    choices: [
+      { text: 'Try to understand what you saw', next: 'afterEcho' },
+      { text: 'Press on, disturbed', next: 'afterEcho' }
+    ],
+    effects: { flags: { echoExperienced: true } }
+  },
+
+  nightEncounter: {
+    text: [
+      '<p>A figure emerges from the shadows—tall, wrapped in the distinctive robes of the Simia. The moonlight catches their features: angular, almost bird-like.</p>',
+      '<p>"Soldier," they say in accented Imperial. "You walk toward Uunsh. You carry death. We have seen your arrival in the turning of stars."</p>'
+    ],
+    choices: [
+      { text: 'Ask about their prophecy', next: 'simiaProphecy' },
+      { text: 'Demand they explain themselves', next: 'simiaConfrontation' },
+      { text: 'Offer to share your fire', next: 'simiaFriendship' }
+    ],
+    effects: { flags: { simiaEncounter: true } }
+  },
+
+  showMercy: {
+    text: [
+      '<p>You kneel beside the wounded bandit. "Because I\'ve seen enough death," you reply to his question.</p>',
+      '<p>The other travelers watch in amazement as you tend to your fallen enemy.</p>'
+    ],
+    choices: [
+      { text: 'Continue your journey', next: 'afterBanditEncounter' }
+    ],
+    effects: { honor: 15, fatigue: 5 }
+  },
+
+  helpTravelers: {
+    text: [
+      '<p>You help the frightened travelers gather their belongings. A child peers at you from behind her mother\'s skirts.</p>',
+      '<p>"Bless you, warrior," the elderly merchant says.</p>'
+    ],
+    choices: [
+      { text: 'Continue your journey', next: 'afterBanditEncounter' }
+    ],
+    effects: { honor: 20, fatigue: 5 }
+  },
+
+  coldDeparture: {
+    text: [
+      '<p>You clean your blade and sheathe it without a second glance. Death is an old companion now.</p>'
+    ],
+    choices: [
+      { text: 'Continue your journey', next: 'afterBanditEncounter' }
+    ],
+    effects: { honor: -5 }
+  },
+
+  lootBandit: {
+    text: [
+      '<p>You search the bandit, finding some coins and a healing salve.</p>'
+    ],
+    choices: [
+      { text: 'Continue your journey', next: 'afterBanditEncounter' }
+    ],
+    effects: { inventory: ['Healing Salve'] }
+  },
+
+  afterBanditEncounter: {
+    text: [
+      '<p>The sun climbs higher as you leave the scene behind. As evening approaches, the world begins to feel strange...</p>'
+    ],
+    choices: [
+      { text: 'Experience your first Echo', next: 'firstEcho' }
+    ]
+  },
+
+  afterEcho: {
+    text: [
+      '<p>You make camp as darkness falls, still shaken by the Echo. Tomorrow you\'ll reach the crossroads.</p>',
+      '<p>As you settle for sleep, you hear something in the darkness.</p>'
+    ],
+    choices: [
+      { text: 'Investigate the sound', next: 'nightEncounter' },
+      { text: 'Try to sleep', next: 'crossroadsChoice' }
+    ]
+  },
+
+  crossroadsChoice: {
+    text: [
+      '<p class="location-text">The Crossroads - Morning</p>',
+      '<p>You stand where the road divides. Which path calls to you?</p>'
+    ],
+    choices: [
+      { text: 'Take the dangerous shortcut', next: 'groveApproach' },
+      { text: 'Follow the safe highway', next: 'groveApproach' }
+    ]
+  },
+
+  groveApproach: {
+    text: [
+      '<p class="location-text">The Grove of Remembrance - Uunsh</p>',
+      '<p>After days of travel, you finally stand before the Grove. Ancient trees form a natural cathedral. Thousands of masks hang from the boughs.</p>',
+      '<p>The keeper approaches—an elderly woman with kind eyes. "Welcome, soldier. You carry a heavy burden."</p>'
+    ],
+    choices: [
+      { text: 'Present the mask formally', next: 'formalCeremony' },
+      { text: 'Ask about the ritual', next: 'ritualInquiry' }
+    ]
+  },
+
+  ritualInquiry: {
+    text: [
+      '<p>You inquire about the ritual, seeking to understand its meaning before you commit the mask.</p>'
+    ],
+    choices: [
+      { text: 'Proceed with the ceremony', next: 'formalCeremony' }
+    ]
+  },
+
+  formalCeremony: {
+    text: [
+      '<p>You kneel and unwrap the mask with trembling hands. The keeper accepts it with grave dignity.</p>',
+      '<p>"Speak her name," the keeper intones.</p>',
+      '<p>"Lysandra of the Third Cavalry," you say, voice cracking. "She died with honor at Voln."</p>',
+      '<p>The keeper nods and begins the ritual. As she works, something strange happens—the mask begins to glow...</p>'
+    ],
+    choices: [
+      { text: 'Watch in awe', next: 'maskVision' }
+    ],
+    effects: { flags: { maskCommitted: true } }
+  },
+
+  maskVision: {
+    text: [
+      '<p class="echo-text">The world fractures. You see through Lysandra\'s eyes—not her death, but days before. A secret meeting. Officers exchanging gold.</p>',
+      '<p class="echo-text">Senator Crassus\'s face appears. "The Third must fall for the war to begin. Their deaths will inflame the people."</p>',
+      '<p class="echo-text">The vision shifts. Aug forces, yes, but led by Imperial guides. Your unit rode into a trap built by your own people.</p>'
+    ],
+    choices: [
+      { text: 'Share what you saw', next: 'revealVision' },
+      { text: 'Keep it secret for now', next: 'hideVision' }
+    ]
+  },
+
+  revealVision: {
+    text: [
+      '<p>"I saw... betrayal," you gasp. "The ambush at Voln—it was arranged by our own people. Senator Crassus, others. They wanted us dead to justify a war."</p>',
+      '<p>The keeper\'s expression hardens. "The mask remembers what the dead have seen. What will you do with this knowledge?"</p>'
+    ],
+    choices: [
+      { text: 'Go to the authorities immediately', next: 'seekJustice' },
+      { text: 'Disappear—this is too dangerous', next: 'flee' },
+      { text: 'Gather more evidence first', next: 'investigate' }
+    ]
+  },
+
+  seekJustice: {
+    text: [
+      '<p>You leave the Grove with new purpose. The Font is your destination. Someone there must listen.</p>',
+      '<p>Commander Thrace emerges. "Cayael? I\'ve been gathering loyalists. The war faction moves tonight."</p>'
+    ],
+    choices: [
+      { text: 'Join Thrace\'s resistance', next: 'finalChoice' }
+    ]
+  },
+
+  finalChoice: {
+    text: [
+      '<p>The Senate must now choose, but so must you. Where does your path lead from here?</p>',
+      '<p>The Echo of Cayael—your echo—will resonate through time. What ending will you write?</p>'
+    ],
+    choices: [
+      { text: 'Stay and fight for justice in the capital', next: 'endingJustice' },
+      { text: 'Return to the border to prevent war', next: 'endingWarPrevention' },
+      { text: 'Vanish into the wilderness', next: 'endingExile' },
+      { text: 'Seek the deeper mystery of the Echoes', next: 'endingMystery' }
+    ]
+  },
+
+  endingJustice: {
+    text: [
+      '<p class="location-text">Epilogue - The Font</p>',
+      '<p>You chose to stay and fight. The capital becomes a battleground of truth against lies.</p>',
+      '<p>Some senators fall. Others rise. The war is postponed, though not prevented.</p>',
+      '<p>Late at night, you still see Echoes. Other Cayaels making other choices.</p>',
+      '<p class="system-message">Your choices have shaped the world. The events of your pilgrimage will echo through time.</p>'
+    ],
+    choices: [
+      { text: 'Begin a new journey', next: 'start' }
+    ]
+  },
+
+  endingWarPrevention: {
+    text: [
+      '<p class="location-text">Epilogue - The Borderlands</p>',
+      '<p>You rode hard for the border, arriving just as the first skirmishes began.</p>',
+      '<p>The war is averted—for now. But the conspirators remain in power.</p>',
+      '<p class="system-message">Your path of prevention has created new possibilities.</p>'
+    ],
+    choices: [
+      { text: 'Begin a new journey', next: 'start' }
+    ]
+  },
+
+  endingExile: {
+    text: [
+      '<p class="location-text">Epilogue - The Wild Places</p>',
+      '<p>You disappeared into the wilderness, leaving behind a testimony that shook the Empire.</p>',
+      '<p>Years pass. You help other pilgrims reach the Grove. They call you the Silent Guardian.</p>',
+      '<p class="system-message">Your choice of exile has created a legend.</p>'
+    ],
+    choices: [
+      { text: 'Begin a new journey', next: 'start' }
+    ]
+  },
+
+  endingMystery: {
+    text: [
+      '<p class="location-text">Epilogue - Between the Echoes</p>',
+      '<p>You chose to pursue the deeper mystery. Why do the Echoes exist?</p>',
+      '<p>Now you walk between worlds, neither fully here nor there.</p>',
+      '<p class="system-message">Your transcendent choice has touched the very fabric of the game world.</p>'
+    ],
+    choices: [
+      { text: 'Begin a new journey', next: 'start' }
+    ]
+  },
+
   finalRevelation: {
     text: [
       '<p>You discover the full extent of the conspiracy and what\'s truly at stake.</p>'
@@ -598,10 +908,13 @@ const scenes = {
 // Helper functions for game mechanics
 function updateStats() {
   document.getElementById('health').textContent = state.health;
-  document.getElementById('er').textContent = state.er;
-  document.getElementById('momentum').textContent = state.momentum;
   document.getElementById('fatigue').textContent = state.fatigue;
   document.getElementById('honor').textContent = state.honor;
+
+  if (state.inCombat) {
+    document.getElementById('er').textContent = state.er;
+    document.getElementById('momentum').textContent = state.momentum;
+  }
 
   // Update inventory display
   const inventoryList = document.getElementById('inventory-list');
@@ -693,201 +1006,187 @@ function renderScene(sceneKey) {
 
 function startCombat(enemyType, nextScene) {
   state.inCombat = true;
-  state.enemy = JSON.parse(JSON.stringify(enemies[enemyType] || { name: 'Enemy', health: 20, attack: 4 }));
-  state.er = 0;
-  state.momentum = 10;
-  state.combo = 0;
-  state.damageMultiplier = 1;
-  state.nextScene = nextScene;
   state.combatPhase = 'opener';
+  state.comboCount = 0;
+  state.er = 0;
+
+  if (enemyType === 'bandits') {
+    state.enemy = {
+      name: 'Bandit Leader',
+      description: 'A desperate highwayman with more greed than skill',
+      health: 60,
+      maxHealth: 60,
+      damage: 8
+    };
+  }
+
+  state.nextScene = nextScene;
 
   document.getElementById('er-display').style.display = 'flex';
   document.getElementById('momentum-display').style.display = 'flex';
 
-  const combatDisplay = document.getElementById('combat-display');
-  combatDisplay.style.display = 'block';
-  document.getElementById('combat-log').textContent = `You are confronted by ${state.enemy.name}!`;
-  renderCombatOptions();
   updateStats();
+  showCombatScene();
 }
 
-function renderCombatOptions() {
-  const options = document.getElementById('combat-options');
-  options.innerHTML = '';
-
-  if (!state.inCombat) return;
+function showCombatScene() {
+  const storyText = document.getElementById('story-text');
+  storyText.innerHTML = '<p class="combat-text">Combat has begun!</p>';
+  storyText.innerHTML += `\n    <div class="enemy-status">\n      <strong>${state.enemy.name}</strong><br>\n      ${state.enemy.description}<br>\n      Health: ${state.enemy.health}/${state.enemy.maxHealth}\n    </div>`;
 
   if (state.combatPhase === 'opener') {
-    ['attack', 'defend', 'control'].forEach(type => {
-      const btn = document.createElement('button');
-      btn.className = 'combat-button';
-      btn.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-      btn.addEventListener('click', () => handleOpener(type));
-      options.appendChild(btn);
-    });
-  } else {
-    let actions = [];
-    if (state.combatPhase === 'attack') {
-      actions = [
-        { name: 'Strike', key: 'strike', cost: 0 },
-        { name: 'Heavy Swing', key: 'heavy', cost: 1 },
-        { name: 'Special', key: 'special', cost: 2 }
-      ];
-    } else if (state.combatPhase === 'defend') {
-      actions = [
-        { name: 'Block', key: 'block', cost: 0 },
-        { name: 'Counter', key: 'counter', cost: 1 },
-        { name: 'Special', key: 'special', cost: 2 }
-      ];
-    } else if (state.combatPhase === 'control') {
-      actions = [
-        { name: 'Trip', key: 'trip', cost: 0 },
-        { name: 'Disarm', key: 'disarm', cost: 1 },
-        { name: 'Special', key: 'special', cost: 2 }
-      ];
-    }
-
-    actions.forEach(a => {
-      const btn = document.createElement('button');
-      btn.className = 'combat-button';
-      btn.textContent = a.name + (a.cost ? ` (-${a.cost} ER)` : '');
-      if (a.cost && state.er < a.cost) btn.disabled = true;
-      btn.addEventListener('click', () => handleBranch(a.key));
-      options.appendChild(btn);
-    });
+    showOpenerChoices();
   }
 }
 
-function handleOpener(type) {
-  const log = document.getElementById('combat-log');
-  if (type === 'attack') {
-    state.momentum += 1;
-    state.combo += 1;
-    log.textContent = 'You launch an attack!';
-  } else if (type === 'defend') {
-    state.er += 1;
-    state.combo = 0;
-    log.textContent = 'You brace for defense!';
-  } else if (type === 'control') {
-    state.momentum += 1;
-    state.combo = 0;
-    log.textContent = 'You attempt to control the foe!';
-  }
-  state.combatPhase = type;
-  updateStats();
-  renderCombatOptions();
+function showOpenerChoices() {
+  const storyText = document.getElementById('story-text');
+  storyText.innerHTML += '<p><strong>OPENER PHASE:</strong> Choose your opening move.</p>';
+
+  const choicesContainer = document.getElementById('choices');
+  choicesContainer.innerHTML = '';
+
+  const abilities = ['attack', 'defend', 'control'];
+  abilities.forEach(verb => {
+    const ability = state.abilities[verb];
+    const button = document.createElement('button');
+    button.className = 'choice-button';
+    button.innerHTML = `${verb.charAt(0).toUpperCase() + verb.slice(1)} - ${ability.name}<br>\n      <span class="choice-effect">${verb === 'attack' ? 'Full damage output' : verb === 'defend' ? '40% damage, 32.5% damage reduction' : '40% damage, 1.25s stun'}</span>`;
+    button.onclick = () => executeOpener(verb);
+    choicesContainer.appendChild(button);
+  });
 }
 
-function handleBranch(action) {
-  const log = document.getElementById('combat-log');
-  let playerDamage = 0;
-  let enemyDamage = state.enemy.attack;
+function executeOpener(verb) {
+  const ability = state.abilities[verb];
+  state.currentVerb = verb;
 
-  switch (action) {
-    case 'strike':
-      playerDamage = 5;
-      state.combo += 1;
-      state.momentum += 1;
-      break;
-    case 'heavy':
-      if (state.er >= 1) {
-        state.er -= 1;
-        playerDamage = 8;
-        state.combo += 1;
-      } else {
-        log.textContent = 'Not enough ER!';
-        return;
-      }
-      break;
-    case 'special':
-      if (state.er >= 2) {
-        state.er -= 2;
-        playerDamage = 12;
-        state.combo = 0;
-      } else {
-        log.textContent = 'Not enough ER!';
-        return;
-      }
-      break;
-    case 'block':
-      enemyDamage = Math.floor(enemyDamage / 2);
-      state.combo = 0;
-      break;
-    case 'counter':
-      if (state.er >= 1) {
-        state.er -= 1;
-        playerDamage = 4;
-        enemyDamage = 0;
-      } else {
-        log.textContent = 'Not enough ER!';
-        return;
-      }
-      break;
-    case 'trip':
-      playerDamage = 4;
-      enemyDamage = Math.max(0, enemyDamage - 2);
-      state.combo = 0;
-      break;
-    case 'disarm':
-      if (state.er >= 1) {
-        state.er -= 1;
-        state.enemy.attack = Math.max(1, Math.floor(state.enemy.attack / 2));
-      } else {
-        log.textContent = 'Not enough ER!';
-        return;
-      }
-      break;
+  const storyText = document.getElementById('story-text');
+  storyText.innerHTML += `<div class="combat-message">You execute ${ability.name}!</div>`;
+
+  const damage = Math.round(state.baseDamage * ability.outMulti);
+  if (damage > 0) {
+    state.enemy.health = Math.max(0, state.enemy.health - damage);
+    storyText.innerHTML += `<p>Deal ${damage} damage to ${state.enemy.name}.</p>`;
   }
 
-  state.damageMultiplier = 1 + state.combo * 0.2 + state.momentum * 0.05;
-  playerDamage = Math.floor(playerDamage * state.damageMultiplier);
-  state.enemy.health = Math.max(0, state.enemy.health - playerDamage);
+  if (verb === 'defend') {
+    state.incomingMultiplier = ability.inMulti;
+    storyText.innerHTML += `<p>You take a defensive stance.</p>`;
+  } else if (verb === 'control' && ability.cc) {
+    storyText.innerHTML += `<p>Enemy is stunned!</p>`;
+  }
 
-  log.textContent = `You dealt ${playerDamage} damage.`;
+  const erGain = verb === 'attack' ? 8 : verb === 'defend' ? 5 : 6;
+  state.er = Math.min(state.maxER, state.er + erGain);
+  storyText.innerHTML += `<div class="system-message">+${erGain} ER</div>`;
 
   updateStats();
 
   if (state.enemy.health <= 0) {
-    log.textContent += ` You defeated the ${state.enemy.name}!`;
     endCombat(true);
+  } else {
+    state.combatPhase = 'branch';
+    setTimeout(() => showBranchChoices(), 1000);
+  }
+}
+
+function showBranchChoices() {
+  const storyText = document.getElementById('story-text');
+  storyText.innerHTML = `<p><strong>BRANCH PHASE:</strong> Your ${state.currentVerb} creates opportunities!</p>`;
+
+  const choicesContainer = document.getElementById('choices');
+  choicesContainer.innerHTML = '';
+
+  const verbBranches = branches[state.currentVerb];
+  verbBranches.forEach(branch => {
+    const button = document.createElement('button');
+    button.className = 'choice-button';
+    button.innerHTML = `${branch.name} - ${branch.flavor}<br>\n      <span class="choice-effect">${branch.effect}</span>`;
+
+    if (branch.erCost) {
+      button.innerHTML += `<span class="choice-cost">${branch.erCost} ER</span>`;
+      if (state.er < branch.erCost) {
+        button.disabled = true;
+      }
+    }
+
+    button.onclick = () => executeBranch(branch);
+    choicesContainer.appendChild(button);
+  });
+}
+
+function executeBranch(branch) {
+  if (branch.erCost) {
+    state.er -= branch.erCost;
+  }
+
+  const storyText = document.getElementById('story-text');
+  storyText.innerHTML += `<div class="branch-message">You branch into ${branch.name}!</div>`;
+
+  const rootMulti = state.abilities[state.currentVerb].outMulti;
+  const totalDamage = Math.round(state.baseDamage * rootMulti * branch.outMulti);
+
+  if (totalDamage > 0) {
+    state.enemy.health = Math.max(0, state.enemy.health - totalDamage);
+    storyText.innerHTML += `<p>${branch.flavor} deals ${totalDamage} damage!</p>`;
+  }
+
+  state.incomingMultiplier = branch.inMulti;
+
+  if (!branch.isSpecial) {
+    state.comboCount++;
+    const erGain = 5 + state.comboCount * 3;
+    state.er = Math.min(state.maxER, state.er + erGain);
+    storyText.innerHTML += `<div class="system-message">Combo ${state.comboCount}! +${erGain} ER</div>`;
+  }
+
+  updateStats();
+
+  if (state.enemy.health <= 0) {
+    endCombat(true);
+  } else {
+    setTimeout(() => enemyTurn(), 1500);
+  }
+}
+
+function enemyTurn() {
+  const storyText = document.getElementById('story-text');
+  storyText.innerHTML = `<p><strong>ENEMY TURN:</strong> ${state.enemy.name} attacks!</p>`;
+
+  const damage = Math.round(state.enemy.damage * state.incomingMultiplier);
+  state.health = Math.max(0, state.health - damage);
+  storyText.innerHTML += `<p>You take ${damage} damage.</p>`;
+
+  updateStats();
+
+  if (state.health <= 0) {
+    endCombat(false);
     return;
   }
 
-  enemyTurn(enemyDamage);
-}
+  const erGain = 4;
+  state.er = Math.min(state.maxER, state.er + erGain);
 
-function enemyTurn(dmg) {
-  const log = document.getElementById('combat-log');
-  state.health = Math.max(0, state.health - dmg);
-  log.textContent += ` The ${state.enemy.name} hits you for ${dmg}.`;
+  state.incomingMultiplier = 1.0;
+
   updateStats();
-  if (state.health <= 0) {
-    endCombat(false);
-  } else {
-    state.combatPhase = 'opener';
-    renderCombatOptions();
-  }
+
+  state.combatPhase = 'opener';
+  setTimeout(() => showOpenerChoices(), 1000);
 }
 
-function endCombat(playerWon) {
+function endCombat(victory) {
   state.inCombat = false;
-  const options = document.getElementById('combat-options');
-  options.innerHTML = '';
-  const cont = document.createElement('button');
-  cont.className = 'choice-button';
-  cont.textContent = 'Continue';
-  cont.addEventListener('click', () => {
-    document.getElementById('combat-display').style.display = 'none';
-    document.getElementById('er-display').style.display = 'none';
-    document.getElementById('momentum-display').style.display = 'none';
-    if (playerWon) {
-      renderScene(state.nextScene);
-    } else {
-      state.health = 100;
-      renderScene('start');
-    }
-  });
-  options.appendChild(cont);
+  document.getElementById('er-display').style.display = 'none';
+  document.getElementById('momentum-display').style.display = 'none';
+
+  if (victory) {
+    state.momentum = Math.min(state.maxMomentum, state.momentum + 5);
+    renderScene('banditVictory');
+  } else {
+    renderScene('banditDefeat');
+  }
 }
 
 // Initialize the game
