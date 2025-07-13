@@ -665,6 +665,129 @@ const scenes = {
     ]
   },
 
+  banditEncounter: {
+    text: [
+      '<p>As you approach, the situation becomes clear. Three rough-looking men block the road, demanding "tolls" from travelers. Bandits—preying on pilgrims and merchants alike.</p>',
+      '<p>One of them notices your approach and grins, revealing yellowed teeth.</p>',
+      '<p class="combat-text">"Well, well. Another pilgrim with more faith than sense. That\'s a fine blade you carry. Why don\'t you hand it over?"</p>'
+    ],
+    choices: [
+      { text: 'Draw your blade and fight', next: 'combatTutorial' },
+      { text: 'Try to negotiate', next: 'negotiateBandits' },
+      { text: 'Intimidate them with your rank', next: 'intimidateBandits' }
+    ],
+    effects: { flags: { banditEncounter: true } }
+  },
+
+  avoidTrouble: {
+    text: [
+      '<p>You veer off the road, giving the commotion a wide berth. You have your own burden to bear, your own duty to fulfill.</p>',
+      '<p>Yet as you pass, you hear a child crying, see an elderly merchant being roughly handled. Your steps slow despite yourself.</p>',
+      '<p>Your mother\'s voice echoes: "A cavalry officer protects those who cannot protect themselves."</p>'
+    ],
+    choices: [
+      { text: 'Turn back and help', next: 'banditEncounter' },
+      { text: 'Keep walking', next: 'continueJourney' }
+    ],
+    effects: { honor: -10 }
+  },
+
+  cautiousApproach: {
+    text: [
+      '<p>You approach slowly, keeping to the shadows of the roadside trees. Your military training serves you well as you assess the situation.</p>',
+      '<p>Three bandits, poorly armed but desperate. They\'re shaking down travelers—an old merchant couple, a family with young children, and what appears to be a young priest.</p>',
+      '<p>The bandits haven\'t noticed you yet.</p>'
+    ],
+    choices: [
+      { text: 'Attack from surprise', next: 'surpriseAttack' },
+      { text: 'Call out a challenge', next: 'combatTutorial' },
+      { text: 'Leave quietly', next: 'continueJourney' }
+    ]
+  },
+
+  negotiateBandits: {
+    text: [
+      '<p>"I\'m on a pilgrimage," you say calmly, showing the wrapped mask. "This is all I carry of value, and it goes to the Green. You gain nothing from robbing me but dishonor."</p>',
+      '<p>The bandits exchange glances. The leader spits. "Pretty words from a pretty soldier. But that blade looks valuable enough."</p>',
+      '<p>"This blade has drunk deep at Voln," you reply quietly. "Would you add your blood to its tally for a few coins?"</p>'
+    ],
+    choices: [
+      { text: 'Press your advantage', next: 'intimidateSuccess' },
+      { text: 'Offer to leave peacefully', next: 'peacefulResolution' },
+      { text: 'Draw your blade', next: 'combatTutorial' }
+    ]
+  },
+
+  intimidateBandits: {
+    text: [
+      '<p>"I am Cayael of the Third Imperial Cavalry," you announce, your voice carrying the ring of command. "I survived Voln. I\'ve walked through hell and emerged carrying my comrade\'s death mask."</p>',
+      '<p>Your hand rests on your blade\'s hilt with casual confidence. The bandits can see it in your eyes—you\'re not bluffing.</p>',
+      '<p>The leader takes a step back, uncertainty flickering across his face.</p>'
+    ],
+    choices: [
+      { text: 'Order them to leave', next: 'intimidateSuccess' },
+      { text: 'Draw your blade', next: 'combatTutorial' }
+    ],
+    effects: { honor: 5 }
+  },
+
+  continueJourney: {
+    text: [
+      '<p>You lower your head and keep walking, leaving the sounds of conflict behind. Each step feels heavier than the last.</p>',
+      '<p>Hours later, you make camp alone, but sleep brings no peace. In your dreams, the cries of those you didn\'t help mingle with the screams from Voln.</p>'
+    ],
+    choices: [
+      { text: 'Continue toward evening', next: 'afterBanditEncounter' }
+    ],
+    effects: { honor: -15, fatigue: 10 }
+  },
+
+  surpriseAttack: {
+    text: [
+      '<p>You move like a shadow, your training taking over. The element of surprise is yours.</p>',
+      '<p class="combat-text">The bandits spin toward you, but you\'re already in motion. "Demon!" one gasps, seeing death in your movements.</p>'
+    ],
+    choices: [
+      { text: 'Begin Combat', next: 'afterBanditEncounter', combat: 'bandits' }
+    ],
+    effects: { flags: { surpriseAttack: true } }
+  },
+
+  intimidateSuccess: {
+    text: [
+      '<p>The bandits break. Your presence—the aura of death and determination you carry—is too much for their petty courage.</p>',
+      '<p>They flee down the road, casting fearful glances back. The travelers emerge from their fearful huddle, offering thanks and blessings.</p>',
+      '<p>An elderly merchant presses a small pouch of coins into your hand. "For the road ahead," he insists.</p>'
+    ],
+    choices: [
+      { text: 'Accept and continue', next: 'afterBanditEncounter' }
+    ],
+    effects: { honor: 10, inventory: ['Merchant\'s Gift'] }
+  },
+
+  peacefulResolution: {
+    text: [
+      '<p>"Let me pass, and I\'ll tell no one of this," you offer. "Continue your business with these others if you must."</p>',
+      '<p>The bandit leader considers this. "You\'d leave these people to us?" he asks, testing.</p>'
+    ],
+    choices: [
+      { text: 'Stand your ground - protect everyone', next: 'combatTutorial' },
+      { text: 'Negotiate for everyone\'s safety', next: 'masterNegotiator' },
+      { text: 'Save yourself and leave', next: 'continueJourney' }
+    ]
+  },
+
+  masterNegotiator: {
+    text: [
+      '<p>"Think practically," you say. "Rob these people and you gain what—a few coins? Kill me, and the Imperial Army will hunt you to the ends of the earth."</p>',
+      '<p>The bandit leader recognizes the wisdom in your words. "Everyone moves on," he agrees finally.</p>'
+    ],
+    choices: [
+      { text: 'Watch them leave, then continue', next: 'afterBanditEncounter' }
+    ],
+    effects: { honor: 15 }
+  },
+
   firstEcho: {
     text: [
       '<p class="location-text">The Road - Twilight</p>',
@@ -690,6 +813,111 @@ const scenes = {
       { text: 'Offer to share your fire', next: 'simiaFriendship' }
     ],
     effects: { flags: { simiaEncounter: true } }
+  },
+
+  simiaProphecy: {
+    text: [
+      '<p>"The mask you carry speaks of betrayal," the Simia says. "The one who wears it in the Green will kindle either war or revelation."</p>',
+      '<p>"Your path branches at Uunsh. What you choose there echoes across all iterations. Be wise."</p>'
+    ],
+    choices: [
+      { text: 'Ask for guidance', next: 'simiaGuidance' },
+      { text: 'Thank them and let them leave', next: 'simiaDepart' }
+    ]
+  },
+
+  simiaConfrontation: {
+    text: [
+      '<p>"Plain speech?" The Simia regards you with ancient patience. "Very well. Your empire prepares for war. Your comrade died because someone profits from conflict."</p>',
+      '<p>"The mask you carry holds proof, though you know it not. Deliver it to the Green, yes. But after—after you must choose."</p>'
+    ],
+    choices: [
+      { text: 'Demand to know what proof', next: 'simiaProof' },
+      { text: 'Accept their words', next: 'simiaAccept' }
+    ]
+  },
+
+  simiaFriendship: {
+    text: [
+      '<p>The Simia settles by your fire with fluid grace. They produce a flask and offer it to you. The liquid tastes of herbs and starlight.</p>',
+      '<p>"You show wisdom," they say. "Few of your kind offer hospitality to mine anymore."</p>',
+      '<p>"When you reach Uunsh, seek the keeper named Elysia. She knows things hidden from common sight."</p>'
+    ],
+    choices: [
+      { text: 'Ask about Elysia', next: 'simiaElysia' },
+      { text: 'Share your story', next: 'simiaStory' }
+    ],
+    effects: { honor: 10 }
+  },
+
+  simiaGuidance: {
+    text: [
+      '<p>"When you reach the Grove, do not just place the mask. Listen to what it remembers."</p>',
+      '<p>"The dead see clearly what the living cannot. After the ritual, seek Keeper Elysia. She guards more than masks."</p>'
+    ],
+    choices: [
+      { text: 'Thank them', next: 'simiaDepart' }
+    ]
+  },
+
+  simiaDepart: {
+    text: [
+      '<p>The Simia inclines their head. "May your path lead to truth, soldier."</p>',
+      '<p>They fade back into the darkness, leaving you alone with your thoughts and the dying fire.</p>'
+    ],
+    choices: [
+      { text: 'Try to rest', next: 'crossroadsChoice' }
+    ]
+  },
+
+  simiaProof: {
+    text: [
+      '<p>"The mask remembers," the Simia says simply. "In the Grove, memories become visible to those who know how to see."</p>',
+      '<p>"Trust the ritual. Trust the keeper. The truth will reveal itself."</p>'
+    ],
+    choices: [
+      { text: 'Accept this cryptic answer', next: 'simiaDepart' }
+    ]
+  },
+
+  simiaAccept: {
+    text: [
+      '<p>You nod slowly. There\'s a strange comfort in their certainty, even if you don\'t fully understand.</p>'
+    ],
+    choices: [
+      { text: 'Rest for the remainder of the night', next: 'crossroadsChoice' }
+    ]
+  },
+
+  simiaElysia: {
+    text: [
+      '<p>"She is old, even by our reckoning," the Simia explains. "She has tended the Grove through three wars. If anyone can help you understand what you carry, it is she."</p>'
+    ],
+    choices: [
+      { text: 'Thank them for the information', next: 'simiaDepart' }
+    ]
+  },
+
+  simiaStory: {
+    text: [
+      '<p>You tell them of Voln, of the ambush, of your promise to the dying. The Simia listens without interruption.</p>',
+      '<p>"The pattern repeats," they say when you finish. "Always the betrayal, always the pilgrimage, always the choice. Perhaps this time..."</p>',
+      '<p>They trail off, lost in thought.</p>'
+    ],
+    choices: [
+      { text: 'Ask what they mean', next: 'simiaPattern' },
+      { text: 'Let them rest in silence', next: 'simiaDepart' }
+    ]
+  },
+
+  simiaPattern: {
+    text: [
+      '<p>"The Echoes," they say. "You\'ve seen them, yes? Different versions, different choices, same soul. The universe trying to correct itself."</p>',
+      '<p>"Something went wrong long ago. Now we all repeat until someone breaks the cycle."</p>'
+    ],
+    choices: [
+      { text: 'Consider their words', next: 'simiaDepart' }
+    ]
   },
 
   showMercy: {
@@ -820,6 +1048,250 @@ const scenes = {
       { text: 'Go to the authorities immediately', next: 'seekJustice' },
       { text: 'Disappear—this is too dangerous', next: 'flee' },
       { text: 'Gather more evidence first', next: 'investigate' }
+    ]
+  },
+
+  hideVision: {
+    text: [
+      '<p>You keep the terrible knowledge to yourself, at least for now. The keeper studies your face.</p>',
+      '<p>"The mask has shown you something," she says. It\'s not a question. "Such visions are not given lightly. What you do with this knowledge will shape many fates."</p>'
+    ],
+    choices: [
+      { text: 'Ask for her counsel', next: 'keeperAdvice' },
+      { text: 'Leave immediately', next: 'urgentDeparture' },
+      { text: 'Research the vision\'s meaning', next: 'seekInterpretation' }
+    ]
+  },
+
+  keeperAdvice: {
+    text: [
+      '<p>"Truth is a burden," the keeper says. "But silence in the face of evil is complicity. You must decide: will you be a witness or a warrior?"</p>',
+      '<p>"There are those in Uunsh who still serve justice. Commander Thrace at the Font. The Midnight Archive, if you dare. Even the Senate has some who would listen."</p>'
+    ],
+    choices: [
+      { text: 'Seek Commander Thrace', next: 'seekJustice' },
+      { text: 'Visit the Midnight Archive', next: 'archiveSearch' },
+      { text: 'Go to the Senate', next: 'senateApproach' }
+    ]
+  },
+
+  urgentDeparture: {
+    text: [
+      '<p>You leave the Grove hastily, your mind reeling from what you\'ve learned. The conspiracy runs deep—too deep for one person to challenge.</p>',
+      '<p>But as you reach the Grove\'s edge, you pause. Can you really walk away knowing what you know?</p>'
+    ],
+    choices: [
+      { text: 'Return and act on the knowledge', next: 'seekJustice' },
+      { text: 'Flee Uunsh entirely', next: 'flee' },
+      { text: 'Seek more information first', next: 'investigate' }
+    ]
+  },
+
+  flee: {
+    text: [
+      '<p>You turn your back on Uunsh, on the Empire, on everything. Let others fight this battle. You\'ve given enough.</p>',
+      '<p>The wilderness calls, and you answer. Perhaps in the wild places, you can forget what you\'ve learned. Perhaps you can find peace.</p>'
+    ],
+    choices: [
+      { text: 'Embrace your exile', next: 'endingExile' }
+    ]
+  },
+
+  investigate: {
+    text: [
+      '<p>You decide to gather more evidence before acting. The vision showed you the betrayal, but you need proof that others will believe.</p>',
+      '<p>Where will you begin your investigation?</p>'
+    ],
+    choices: [
+      { text: 'The Midnight Archive', next: 'archiveSearch' },
+      { text: 'Commander Thrace', next: 'seekJustice' },
+      { text: 'The Senate records', next: 'senateRecords' }
+    ]
+  },
+
+  senateApproach: {
+    text: [
+      '<p>You make your way to the Senate chambers. The grand building looms before you, a symbol of Imperial power and, perhaps, Imperial corruption.</p>',
+      '<p>Guards eye you suspiciously as you approach. Without official business, entering will be difficult.</p>'
+    ],
+    choices: [
+      { text: 'Use your military rank', next: 'militaryAuthority' },
+      { text: 'Claim urgent news from the front', next: 'urgentNews' },
+      { text: 'Seek another way', next: 'alternativeApproach' }
+    ]
+  },
+
+  senateRecords: {
+    text: [
+      '<p>The Senate\'s public records might hold clues about the conspiracy. You spend hours poring over documents, looking for patterns.</p>',
+      '<p>There—military supply contracts awarded to Senator Crassus\'s associates. Troop movements that make no tactical sense. The pieces begin to form a picture.</p>'
+    ],
+    choices: [
+      { text: 'Take your findings to Thrace', next: 'seekJustice' },
+      { text: 'Confront the Senate directly', next: 'senateConfrontation' }
+    ]
+  },
+
+  militaryAuthority: {
+    text: [
+      '<p>"I am Cayael of the Third Cavalry," you announce. "I carry urgent intelligence regarding the ambush at Voln."</p>',
+      '<p>The guards exchange glances. Your rank carries weight, and news of Voln is still fresh. They allow you entry.</p>'
+    ],
+    choices: [
+      { text: 'Proceed to the Senate floor', next: 'senateMeeting' }
+    ]
+  },
+
+  urgentNews: {
+    text: [
+      '<p>"I bear witness to treason," you say bluntly. "The Senate must hear what I\'ve learned, or more will die as we did at Voln."</p>',
+      '<p>Your words cause a stir. Within moments, you\'re escorted inside—though whether as a witness or a prisoner remains to be seen.</p>'
+    ],
+    choices: [
+      { text: 'Face the Senate', next: 'senateMeeting' }
+    ]
+  },
+
+  alternativeApproach: {
+    text: [
+      '<p>Direct confrontation isn\'t the only way. You recall the keeper mentioning Commander Thrace. Perhaps building allies first would be wiser.</p>'
+    ],
+    choices: [
+      { text: 'Seek Commander Thrace', next: 'seekJustice' },
+      { text: 'Try the Midnight Archive', next: 'archiveSearch' }
+    ]
+  },
+
+  senateConfrontation: {
+    text: [
+      '<p>You burst into the Senate chambers, your evidence in hand. "Senators! I bring proof of treason in your own ranks!"</p>',
+      '<p>The chamber erupts in chaos. Some call for your arrest, others demand to hear your evidence. Senator Crassus himself rises, his face a mask of cold fury.</p>'
+    ],
+    choices: [
+      { text: 'Present your evidence boldly', next: 'evidencePresentation' },
+      { text: 'Target Crassus directly', next: 'crassusAccusation' }
+    ]
+  },
+
+  evidencePresentation: {
+    text: [
+      '<p>You lay out the evidence methodically—the vision, the documents, the pattern of betrayals. Some senators listen with growing alarm, others with skepticism.</p>',
+      '<p>"Visions and coincidences," Crassus sneers. "This soldier is clearly disturbed by their experiences at Voln."</p>'
+    ],
+    choices: [
+      { text: 'Stand your ground', next: 'finalTestimony' },
+      { text: 'Call for other witnesses', next: 'seekWitnesses' }
+    ]
+  },
+
+  crassusAccusation: {
+    text: [
+      '<p>"You, Senator Crassus!" you point directly at him. "You arranged the ambush at Voln. You\'ve been selling our positions to Aug forces!"</p>',
+      '<p>The chamber goes silent. Crassus\'s face turns purple with rage. "How dare you! Guards, arrest this madman!"</p>'
+    ],
+    choices: [
+      { text: 'Fight your way out', next: 'senateFight' },
+      { text: 'Submit to arrest', next: 'senateArrest' },
+      { text: 'Rally sympathetic senators', next: 'senateAllies' }
+    ]
+  },
+
+  senateFight: {
+    text: [
+      '<p>You draw your blade as guards converge. "The truth will not be silenced!" you shout.</p>',
+      '<p>But you\'re vastly outnumbered. This won\'t end well.</p>'
+    ],
+    choices: [
+      { text: 'Fight to the end', next: 'heroicEnd' },
+      { text: 'Try to escape', next: 'desperateEscape' }
+    ]
+  },
+
+  senateArrest: {
+    text: [
+      '<p>You allow yourself to be taken, hoping that your arrest will spark investigation. As they lead you away, you see doubt in some senators\' eyes.</p>',
+      '<p>Perhaps your sacrifice will plant seeds of truth.</p>'
+    ],
+    choices: [
+      { text: 'Accept your fate', next: 'imprisonmentEnding' }
+    ]
+  },
+
+  senateAllies: {
+    text: [
+      '<p>"Those who serve justice, stand with me!" you call out. "How many more Volns must we suffer?"</p>',
+      '<p>A few younger senators rise, moved by your words. The chamber divides, and for a moment, change seems possible.</p>'
+    ],
+    choices: [
+      { text: 'Lead the resistance', next: 'senateResistance' }
+    ]
+  },
+
+  finalTestimony: {
+    text: [
+      '<p>You speak with all the conviction of the dead behind you, of promises made and honor betrayed. Your words ring through the chamber.</p>',
+      '<p>When you finish, the silence is deafening. Then, slowly, one senator stands. Then another. The tide begins to turn.</p>'
+    ],
+    choices: [
+      { text: 'See what unfolds', next: 'finalChoice' }
+    ]
+  },
+
+  heroicEnd: {
+    text: [
+      '<p class="location-text">Epilogue - The Senate Chamber</p>',
+      '<p>You fell in the Senate chambers, blade in hand, truth on your lips. But your death was not in vain.</p>',
+      '<p>The spectacle of a war hero cut down for speaking truth sparked outrage. Investigations followed. Crassus fell from power.</p>',
+      '<p>You became a martyr for justice, your name echoing through time.</p>',
+      '<p class="system-message">Your sacrifice has changed the course of history.</p>'
+    ],
+    choices: [
+      { text: 'Begin a new journey', next: 'start' }
+    ]
+  },
+
+  desperateEscape: {
+    text: [
+      '<p>You fight your way to a window and leap, trusting to luck and skill. The fall is harsh, but you survive.</p>',
+      '<p>Now a fugitive, you must continue your fight from the shadows.</p>'
+    ],
+    choices: [
+      { text: 'Go underground', next: 'resistanceEnding' }
+    ]
+  },
+
+  imprisonmentEnding: {
+    text: [
+      '<p class="location-text">Epilogue - The Depths</p>',
+      '<p>They locked you away in the deepest cells, but they couldn\'t lock away the truth.</p>',
+      '<p>Your story spread despite their efforts. Guards whispered of the soldier who challenged the Senate. Eventually, the conspiracy unraveled.</p>',
+      '<p>You lived to see justice done, even from behind bars.</p>',
+      '<p class="system-message">Your imprisonment became a symbol of resistance.</p>'
+    ],
+    choices: [
+      { text: 'Begin a new journey', next: 'start' }
+    ]
+  },
+
+  senateResistance: {
+    text: [
+      '<p>What began as one voice became a chorus. The younger senators rally to your cause, demanding investigation.</p>',
+      '<p>Crassus and his allies fight back, but the seed of doubt is planted. The Senate divides, and from division comes truth.</p>'
+    ],
+    choices: [
+      { text: 'Lead the fight for justice', next: 'endingJustice' }
+    ]
+  },
+
+  resistanceEnding: {
+    text: [
+      '<p class="location-text">Epilogue - The Underground</p>',
+      '<p>You became a ghost in the machine, working from the shadows to expose the conspiracy.</p>',
+      '<p>Your network grew—soldiers who remembered honor, citizens who demanded truth. The resistance you built outlasted the war.</p>',
+      '<p class="system-message">Your path created a new future from the shadows.</p>'
+    ],
+    choices: [
+      { text: 'Begin a new journey', next: 'start' }
     ]
   },
 
@@ -1018,6 +1490,11 @@ function startCombat(enemyType, nextScene) {
       maxHealth: 60,
       damage: 8
     };
+  }
+
+  if (state.flags.surpriseAttack) {
+    state.enemy.health = Math.max(0, state.enemy.health - 10);
+    state.flags.surpriseAttack = false;
   }
 
   state.nextScene = nextScene;
