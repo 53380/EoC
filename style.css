@@ -35,6 +35,12 @@ body { font-family:'Crimson Text', 'Times New Roman', Times, serif; background:l
 #inventory { margin-top:15px; padding-top:15px; border-top:1px solid #4a3a28; }
 .inventory-item { color:#a090d0; font-size:14px; margin-bottom:5px; }
 .combat-text { color:#ff9090; font-weight:bold; }
+.combat-button { background:#3a2a1a; color:#e0d0b0; border:1px solid #6a5a4a; padding:10px 20px; cursor:pointer; border-radius:5px; margin-right:10px; margin-bottom:10px; }
+.combat-button:hover:not(:disabled) { background:#4a3a2a; }
+.combat-button:disabled { opacity:0.5; cursor:not-allowed; }
+#combat-display { margin-top:20px; background:rgba(0,0,0,0.3); padding:20px; border-radius:5px; }
+#combat-log { margin-bottom:15px; min-height:60px; }
+#combat-options { display:flex; flex-wrap:wrap; }
 .location-text { color:#90d0ff; font-weight:600; text-align:center;
   margin-bottom:20px; font-size:24px; font-family:'Cinzel', 'Georgia', 'Times New Roman', Times, serif; }
 @media (max-width:768px) {

@@ -15,7 +15,17 @@ const state = {
   },
   inCombat: false,
   enemy: null,
-  combatPhase: null
+  combatPhase: null,
+  er: 0,
+  momentum: 10,
+  combo: 0,
+  damageMultiplier: 1,
+  nextScene: null
+};
+
+// Basic enemy templates for the prototype combat system
+const enemies = {
+  bandits: { name: 'Bandits', health: 30, attack: 6 }
 };
 
 // Story scenes
@@ -578,6 +588,8 @@ const scenes = {
 // Helper functions for game mechanics
 function updateStats() {
   document.getElementById('health').textContent = state.health;
+  document.getElementById('er').textContent = state.er;
+  document.getElementById('momentum').textContent = state.momentum;
   document.getElementById('fatigue').textContent = state.fatigue;
   document.getElementById('honor').textContent = state.honor;
 
@@ -671,23 +683,201 @@ function renderScene(sceneKey) {
 
 function startCombat(enemyType, nextScene) {
   state.inCombat = true;
+  state.enemy = JSON.parse(JSON.stringify(enemies[enemyType] || { name: 'Enemy', health: 20, attack: 4 }));
+  state.er = 0;
+  state.momentum = 10;
+  state.combo = 0;
+  state.damageMultiplier = 1;
+  state.nextScene = nextScene;
+  state.combatPhase = 'opener';
 
-  // Simple combat resolution for prototype
-  const damage = Math.floor(Math.random() * 10) + 5;
-  state.health = Math.max(0, state.health - damage);
+  document.getElementById('er-display').style.display = 'flex';
+  document.getElementById('momentum-display').style.display = 'flex';
 
-  alert(`You engaged in combat and took ${damage} damage!`);
+  const combatDisplay = document.getElementById('combat-display');
+  combatDisplay.style.display = 'block';
+  document.getElementById('combat-log').textContent = `You are confronted by ${state.enemy.name}!`;
+  renderCombatOptions();
+  updateStats();
+}
 
-  state.inCombat = false;
+function renderCombatOptions() {
+  const options = document.getElementById('combat-options');
+  options.innerHTML = '';
+
+  if (!state.inCombat) return;
+
+  if (state.combatPhase === 'opener') {
+    ['attack', 'defend', 'control'].forEach(type => {
+      const btn = document.createElement('button');
+      btn.className = 'combat-button';
+      btn.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+      btn.addEventListener('click', () => handleOpener(type));
+      options.appendChild(btn);
+    });
+  } else {
+    let actions = [];
+    if (state.combatPhase === 'attack') {
+      actions = [
+        { name: 'Strike', key: 'strike', cost: 0 },
+        { name: 'Heavy Swing', key: 'heavy', cost: 1 },
+        { name: 'Special', key: 'special', cost: 2 }
+      ];
+    } else if (state.combatPhase === 'defend') {
+      actions = [
+        { name: 'Block', key: 'block', cost: 0 },
+        { name: 'Counter', key: 'counter', cost: 1 },
+        { name: 'Special', key: 'special', cost: 2 }
+      ];
+    } else if (state.combatPhase === 'control') {
+      actions = [
+        { name: 'Trip', key: 'trip', cost: 0 },
+        { name: 'Disarm', key: 'disarm', cost: 1 },
+        { name: 'Special', key: 'special', cost: 2 }
+      ];
+    }
+
+    actions.forEach(a => {
+      const btn = document.createElement('button');
+      btn.className = 'combat-button';
+      btn.textContent = a.name + (a.cost ? ` (-${a.cost} ER)` : '');
+      if (a.cost && state.er < a.cost) btn.disabled = true;
+      btn.addEventListener('click', () => handleBranch(a.key));
+      options.appendChild(btn);
+    });
+  }
+}
+
+function handleOpener(type) {
+  const log = document.getElementById('combat-log');
+  if (type === 'attack') {
+    state.momentum += 1;
+    state.combo += 1;
+    log.textContent = 'You launch an attack!';
+  } else if (type === 'defend') {
+    state.er += 1;
+    state.combo = 0;
+    log.textContent = 'You brace for defense!';
+  } else if (type === 'control') {
+    state.momentum += 1;
+    state.combo = 0;
+    log.textContent = 'You attempt to control the foe!';
+  }
+  state.combatPhase = type;
+  updateStats();
+  renderCombatOptions();
+}
+
+function handleBranch(action) {
+  const log = document.getElementById('combat-log');
+  let playerDamage = 0;
+  let enemyDamage = state.enemy.attack;
+
+  switch (action) {
+    case 'strike':
+      playerDamage = 5;
+      state.combo += 1;
+      state.momentum += 1;
+      break;
+    case 'heavy':
+      if (state.er >= 1) {
+        state.er -= 1;
+        playerDamage = 8;
+        state.combo += 1;
+      } else {
+        log.textContent = 'Not enough ER!';
+        return;
+      }
+      break;
+    case 'special':
+      if (state.er >= 2) {
+        state.er -= 2;
+        playerDamage = 12;
+        state.combo = 0;
+      } else {
+        log.textContent = 'Not enough ER!';
+        return;
+      }
+      break;
+    case 'block':
+      enemyDamage = Math.floor(enemyDamage / 2);
+      state.combo = 0;
+      break;
+    case 'counter':
+      if (state.er >= 1) {
+        state.er -= 1;
+        playerDamage = 4;
+        enemyDamage = 0;
+      } else {
+        log.textContent = 'Not enough ER!';
+        return;
+      }
+      break;
+    case 'trip':
+      playerDamage = 4;
+      enemyDamage = Math.max(0, enemyDamage - 2);
+      state.combo = 0;
+      break;
+    case 'disarm':
+      if (state.er >= 1) {
+        state.er -= 1;
+        state.enemy.attack = Math.max(1, Math.floor(state.enemy.attack / 2));
+      } else {
+        log.textContent = 'Not enough ER!';
+        return;
+      }
+      break;
+  }
+
+  state.damageMultiplier = 1 + state.combo * 0.2 + state.momentum * 0.05;
+  playerDamage = Math.floor(playerDamage * state.damageMultiplier);
+  state.enemy.health = Math.max(0, state.enemy.health - playerDamage);
+
+  log.textContent = `You dealt ${playerDamage} damage.`;
+
   updateStats();
 
-  if (state.health > 0) {
-    renderScene(nextScene);
-  } else {
-    alert("You have been defeated!");
-    state.health = 100; // Reset health for demo
-    renderScene('start');
+  if (state.enemy.health <= 0) {
+    log.textContent += ` You defeated the ${state.enemy.name}!`;
+    endCombat(true);
+    return;
   }
+
+  enemyTurn(enemyDamage);
+}
+
+function enemyTurn(dmg) {
+  const log = document.getElementById('combat-log');
+  state.health = Math.max(0, state.health - dmg);
+  log.textContent += ` The ${state.enemy.name} hits you for ${dmg}.`;
+  updateStats();
+  if (state.health <= 0) {
+    endCombat(false);
+  } else {
+    state.combatPhase = 'opener';
+    renderCombatOptions();
+  }
+}
+
+function endCombat(playerWon) {
+  state.inCombat = false;
+  const options = document.getElementById('combat-options');
+  options.innerHTML = '';
+  const cont = document.createElement('button');
+  cont.className = 'choice-button';
+  cont.textContent = 'Continue';
+  cont.addEventListener('click', () => {
+    document.getElementById('combat-display').style.display = 'none';
+    document.getElementById('er-display').style.display = 'none';
+    document.getElementById('momentum-display').style.display = 'none';
+    if (playerWon) {
+      renderScene(state.nextScene);
+    } else {
+      state.health = 100;
+      renderScene('start');
+    }
+  });
+  options.appendChild(cont);
 }
 
 // Initialize the game
