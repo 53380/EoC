@@ -307,6 +307,108 @@ const scenes = {
     ]
   },
 
+  // Newly added placeholders for missing scenes
+  afterCeremony: {
+    text: [
+      '<p>The ceremony concludes and a solemn calm settles over the Grove.</p>'
+    ],
+    choices: [
+      { text: 'Consider your next move', next: 'leavingChoice' }
+    ]
+  },
+
+  agreeToTestify: {
+    text: [
+      '<p>You vow to help Commander Thrace expose the conspiracy.</p>'
+    ],
+    choices: [
+      { text: 'Prepare immediately', next: 'urgentAgreement' },
+      { text: 'Finish your pilgrimage first', next: 'groveApproach' }
+    ]
+  },
+
+  archiveSearch: {
+    text: [
+      '<p>You delve into the Midnight Archive, searching for supporting evidence.</p>'
+    ],
+    choices: [
+      { text: 'Continue', next: 'archiveRevelation' }
+    ]
+  },
+
+  combatStart: {
+    text: [
+      '<p>Bandits leap from the shadows. You ready your blade.</p>'
+    ],
+    choices: [
+      { text: 'Fight', next: 'urgentWarning', combat: 'bandits' }
+    ]
+  },
+
+  examineMask: {
+    text: [
+      '<p>You unwrap your comrade\'s mask, tracing the familiar lines.</p>'
+    ],
+    choices: [
+      { text: 'Begin your journey', next: 'morningRoutine' }
+    ]
+  },
+
+  flashback1: {
+    text: [
+      '<p>Memories of Voln flood back&mdash;the noise, the smoke, the betrayal.</p>'
+    ],
+    choices: [
+      { text: 'Shake off the memories', next: 'morningRoutine' }
+    ]
+  },
+
+  fontVisit: {
+    text: [
+      '<p>At the Font, priests listen to your warnings with grave concern.</p>'
+    ],
+    choices: [
+      { text: 'Take your message to Thrace', next: 'urgentWarning' }
+    ]
+  },
+
+  fullTestimony: {
+    text: [
+      '<p>You recount everything you remember of the conspiracy.</p>'
+    ],
+    choices: [
+      { text: 'Hear Thrace\'s response', next: 'targetConcern' }
+    ]
+  },
+
+  groveApproach: {
+    text: [
+      '<p>You arrive at the Grove where the Green awaits your comrade\'s mask.</p>'
+    ],
+    choices: [
+      { text: 'Place the mask', next: 'placeTheMask' }
+    ]
+  },
+
+  morningRoutine: {
+    text: [
+      '<p>You pack up camp and set out toward Uunsh.</p>'
+    ],
+    choices: [
+      { text: 'Continue', next: 'groveApproach' }
+    ]
+  },
+
+  placeTheMask: {
+    text: [
+      '<p>You set the mask among the others, honoring your fallen comrade.</p>'
+    ],
+    choices: [
+      { text: 'Seek guidance from the keepers', next: 'seekInterpretation' }
+    ],
+    effects: { flags: { maskCommitted: true } }
+  },
+
   senateWarning: {
     text: [
       '<p>You attempt to warn the Senate directly about the impending threat.</p>'
