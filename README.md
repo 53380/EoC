@@ -7,7 +7,7 @@ The included combat system is intentionally lightweight. Encounters are resolved
 ## Getting Started
 
 1. Download or clone this repository.
-2. Locate the file `Echo of Cayeal.html`.
+2. Locate the file `Echo of Cayael.html`.
 3. Open the file in a modern web browser (e.g. Chrome, Firefox, or Edge) by double-clicking it or dragging it into a new tab.
 
 No additional server setup is required—everything runs from the single HTML file.
