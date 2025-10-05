@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Worlds Within - Combat Sandbox</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-900 text-white min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useState, useReducer, useEffect, useRef } = React;
+
+      const ATTRIBUTES = ['STR', 'DEX', 'TOU', 'AGI', 'SPR', 'INS', 'CHA'];
+      const ELEMENTS = ['Fire', 'Water', 'Stone', 'Air', 'Spark', 'Verdant', 'Essence'];
+
+      const WEAPONS = {
+        'Long Swords': { mass: 2, damageMultiplier: 1.0, windUpBase: 0.36, recoveryBase: 0.48, erGainedOnHit: 4 },
+        'Curved Long Blades': { mass: 2, damageMultiplier: 1.0, windUpBase: 0.34, recoveryBase: 0.48, erGainedOnHit: 4 },
+        'Short Swords': { mass: 1, damageMultiplier: 0.9, windUpBase: 0.28, recoveryBase: 0.38, erGainedOnHit: 3 },
+        'Great Swords': { mass: 3, damageMultiplier: 1.3, windUpReduction: 0.08, windUpBase: 0.405, recoveryBase: 0.60, erGainedOnHit: 6 },
+        'Knives & Daggers': { mass: 1, damageMultiplier: 0.85, windUpBase: 0.26, recoveryBase: 0.36, erGainedOnHit: 2 },
+        'Fist Weapons': { mass: 1, damageMultiplier: 0.85, windUpBase: 0.26, recoveryBase: 0.34, erGainedOnHit: 2 },
+        'One-Hand Axes': { mass: 2, damageMultiplier: 1.1, windUpBase: 0.38, recoveryBase: 0.52, erGainedOnHit: 4 },
+        'Two-Hand Axes': { mass: 3, damageMultiplier: 1.35, windUpBase: 0.46, recoveryBase: 0.62, erGainedOnHit: 6 },
+        'Spears (Thrusting)': { mass: 2, damageMultiplier: 1.0, windUpBase: 0.36, recoveryBase: 0.48, erGainedOnHit: 4 },
+        'Polearms (Sweeping)': { mass: 2, damageMultiplier: 1.05, windUpBase: 0.40, recoveryBase: 0.52, erGainedOnHit: 4 },
+        'Blunt Weapons': { mass: 3, damageMultiplier: 1.35, windUpBase: 0.46, recoveryBase: 0.64, erGainedOnHit: 6 },
+        'Flails & Chain Maces': { mass: 2, damageMultiplier: 1.1, windUpBase: 0.36, recoveryBase: 0.52, erGainedOnHit: 4 },
+        'Whips & Urumi': { mass: 1, damageMultiplier: 0.9, windUpBase: 0.32, recoveryBase: 0.50, erGainedOnHit: 2 },
+        'Staffs': { mass: 2, damageMultiplier: 1.0, windUpBase: 0.38, recoveryBase: 0.50, erGainedOnHit: 4 },
+        'Shields': { mass: 2, damageMultiplier: 0.8, windUpBase: 0.32, recoveryBase: 0.42, erGainedOnHit: 4 },
+        'Longbows': { mass: 2, damageMultiplier: 1.0, windUpBase: 0.42, recoveryBase: 0.52, erGainedOnHit: 4 },
+        'Short Bows': { mass: 1, damageMultiplier: 0.9, windUpBase: 0.34, recoveryBase: 0.46, erGainedOnHit: 3 },
+        'Crossbows': { mass: 2, damageMultiplier: 1.1, windUpBase: 0.42, recoveryBase: 0.56, erGainedOnHit: 4 },
+        'Pistols': { mass: 2, damageMultiplier: 1.0, windUpBase: 0.42, recoveryBase: 0.56, erGainedOnHit: 4 },
+        'Shotguns': { mass: 2, damageMultiplier: 1.2, windUpBase: 0.42, recoveryBase: 0.60, erGainedOnHit: 4 },
+        'Long Guns': { mass: 3, damageMultiplier: 1.25, windUpBase: 0.50, recoveryBase: 0.65, erGainedOnHit: 6 },
+        'Thrown Weapons': { mass: 1, damageMultiplier: 0.95, windUpBase: 0.30, recoveryBase: 0.42, erGainedOnHit: 2 },
+        'Misc. Ranged': { mass: 1, damageMultiplier: 0.9, windUpBase: 0.32, recoveryBase: 0.46, erGainedOnHit: 2 }
+      };
+
+      const COMBAT_STATES = { IDLE: 'idle', WIND_UP: 'windUp', RECOVERY: 'recovery' };
+
+      const calculateResonance = (attrValue, elemValue) => (attrValue / 100) * (elemValue / 100);
+
+      const getAttributeTierDiscount = (value) => {
+        if (value >= 90) return 0.15;
+        if (value >= 60) return 0.10;
+        if (value >= 30) return 0.05;
+        return 0;
+      };
+
+      const getResonanceDiscount = (resonance) => {
+        if (resonance >= 0.9) return 0.20;
+        if (resonance >= 0.7) return 0.15;
+        if (resonance >= 0.5) return 0.10;
+        if (resonance >= 0.3) return 0.05;
+        return 0;
+      };
+
+      const getResonanceTier = (resonance) => {
+        if (resonance >= 0.7) return 'Merged';
+        if (resonance >= 0.5) return 'Bonded';
+        if (resonance >= 0.3) return 'Touched';
+        return 'Base';
+      };
+
+      const calculateAnimationTiming = (weapon, agiValue) => {
+        const weaponData = WEAPONS[weapon];
+        const massModifier = 1 + (weaponData.mass - 1) * 0.1;
+        const agiModifier = 1 - (agiValue / 100) * 0.3;
+        const windUpReduction = weaponData.windUpReduction || 0;
+        
+        return {
+          windUp: weaponData.windUpBase * massModifier * agiModifier * (1 - windUpReduction),
+          recovery: weaponData.recoveryBase * massModifier * agiModifier
+        };
+      };
+
+      const calculateERCost = (ability, character) => {
+        const attrValue = character.attributes[ability.governingAttr] || 0;
+        const elemValue = character.elements[ability.governingElem] || 0;
+        const resonance = calculateResonance(attrValue, elemValue);
+        const s = ability.scalars;
+        
+        const grossCost = ability.baseBand * (s.scope || 1) * (s.potency || 1) * (s.uptime || 1) * 
+                          (s.reliability || 1) * (s.mobility || 1) * (s.ccCap || 1) * 
+                          (s.reaction || 1) * (s.cooldown || 1) * (s.risk || 1);
+        
+        const finalCost = grossCost * (1 - getAttributeTierDiscount(attrValue)) * (1 - getResonanceDiscount(resonance));
+        
+        return { grossCost, finalCost: Math.round(finalCost * 10) / 10, resonance, resonanceTier: getResonanceTier(resonance) };
+      };
+
+      const calculateDamage = (ability, character) => {
+        const attrValue = character.attributes[ability.governingAttr] || 0;
+        const elemValue = character.elements[ability.governingElem] || 0;
+        const resonance = calculateResonance(attrValue, elemValue);
+        const weaponMult = WEAPONS[character.weapon].damageMultiplier;
+        return Math.round((ability.baseDamage || 10) * (1 + attrValue / 100) * (1 + resonance) * weaponMult);
+      };
+
+      const ABILITIES = [
+        { id: 'fire_attack', name: 'Embernick', family: 'Fire', variant: 'Attack', baseBand: 5, baseDamage: 10, governingAttr: 'STR', governingElem: 'Fire', scalars: { scope: 1.0, potency: 1.1, uptime: 1.0, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 1.0 }, description: 'Fire strike' },
+        { id: 'fire_defense', name: 'Ember Mantle', family: 'Fire', variant: 'Defense', baseBand: 5, baseDamage: 5, mitigationMultiplier: 0.50, governingAttr: 'TOU', governingElem: 'Fire', scalars: { scope: 1.0, potency: 1.0, uptime: 1.0, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 0.90 }, description: '50% mitigation', duration: 2000 },
+        { id: 'fire_control', name: 'Ember Haze', family: 'Fire', variant: 'Control', baseBand: 12, baseDamage: 6, governingAttr: 'DEX', governingElem: 'Fire', scalars: { scope: 1.0, potency: 1.0, uptime: 1.0, reliability: 0.98, mobility: 1.0, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 1.0 }, description: '1.25s Slow', ccDuration: 1.25, ccType: 'Slow' },
+        { id: 'fire_special', name: 'Blazereap', family: 'Fire', variant: 'Special', baseBand: 28, baseDamage: 40, governingAttr: 'STR', governingElem: 'Fire', scalars: { scope: 1.25, potency: 1.35, uptime: 1.0, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.15, cooldown: 1.0, risk: 1.0 }, description: 'Cone (R≥0.5)', requiresResonance: 0.5 },
+        { id: 'fire_safe_attack', name: 'Flicker', family: 'Fire', variant: 'Attack', baseBand: 3, baseDamage: 7, governingAttr: 'DEX', governingElem: 'Fire', scalars: { scope: 1.0, potency: 0.85, uptime: 1.0, reliability: 1.0, mobility: 1.10, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 0.85 }, description: 'Safe jab' },
+        { id: 'fire_heavy_defense', name: 'Ember-Plate', family: 'Fire', variant: 'Defense', baseBand: 7, baseDamage: 8, mitigationMultiplier: 0.35, governingAttr: 'TOU', governingElem: 'Fire', scalars: { scope: 1.0, potency: 1.10, uptime: 1.30, reliability: 1.0, mobility: 0.85, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 0.80 }, description: '65% mitigation', duration: 3000 },
+        { id: 'fire_agg_attack', name: 'Emberstorm', family: 'Fire', variant: 'Attack', baseBand: 8, baseDamage: 18, governingAttr: 'STR', governingElem: 'Fire', scalars: { scope: 1.15, potency: 1.30, uptime: 1.0, reliability: 1.0, mobility: 0.90, ccCap: 1.0, reaction: 1.10, cooldown: 1.0, risk: 1.10 }, description: 'Aggressive AoE' },
+        { id: 'water_attack', name: 'Rippletap', family: 'Water', variant: 'Attack', baseBand: 5, baseDamage: 9, governingAttr: 'SPR', governingElem: 'Water', scalars: { scope: 1.0, potency: 1.05, uptime: 1.15, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.10, cooldown: 1.0, risk: 1.0 }, description: 'Water strike' },
+        { id: 'water_defense', name: 'Steamscreen', family: 'Water', variant: 'Defense', baseBand: 6, baseDamage: 4, mitigationMultiplier: 0.60, governingAttr: 'TOU', governingElem: 'Water', scalars: { scope: 1.0, potency: 0.95, uptime: 1.20, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.15, cooldown: 1.0, risk: 0.92 }, description: '60% mitigation', duration: 2000 },
+        { id: 'water_control', name: 'Drift Hold', family: 'Water', variant: 'Control', baseBand: 13, baseDamage: 5, governingAttr: 'SPR', governingElem: 'Water', scalars: { scope: 1.05, potency: 0.95, uptime: 1.10, reliability: 1.0, mobility: 1.0, ccCap: 1.05, reaction: 1.20, cooldown: 1.0, risk: 1.0 }, description: '1.5s Slow', ccDuration: 1.5, ccType: 'Slow' },
+        { id: 'water_safe_attack', name: 'Measure', family: 'Water', variant: 'Attack', baseBand: 3, baseDamage: 6, governingAttr: 'SPR', governingElem: 'Water', scalars: { scope: 1.0, potency: 0.80, uptime: 1.20, reliability: 1.0, mobility: 1.05, ccCap: 1.0, reaction: 1.05, cooldown: 1.0, risk: 0.85 }, description: 'Sustained poke' },
+        { id: 'water_heavy_defense', name: 'Sunken Aegis', family: 'Water', variant: 'Defense', baseBand: 7, baseDamage: 6, mitigationMultiplier: 0.30, governingAttr: 'TOU', governingElem: 'Water', scalars: { scope: 1.0, potency: 0.85, uptime: 1.40, reliability: 1.0, mobility: 0.80, ccCap: 1.0, reaction: 1.20, cooldown: 1.0, risk: 0.75 }, description: '70% mitigation', duration: 3500 },
+        { id: 'stone_attack', name: 'Ironkiss', family: 'Stone', variant: 'Attack', baseBand: 6, baseDamage: 12, governingAttr: 'STR', governingElem: 'Stone', scalars: { scope: 1.0, potency: 1.20, uptime: 1.0, reliability: 1.0, mobility: 0.95, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 1.05 }, description: 'Heavy strike' },
+        { id: 'stone_defense', name: 'Ironbark Hold', family: 'Stone', variant: 'Defense', baseBand: 4, baseDamage: 3, mitigationMultiplier: 0.40, governingAttr: 'TOU', governingElem: 'Stone', scalars: { scope: 1.0, potency: 0.90, uptime: 1.25, reliability: 1.0, mobility: 0.90, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 0.85 }, description: '60% mitigation', duration: 2500 },
+        { id: 'stone_control', name: 'Ground-Lock', family: 'Stone', variant: 'Control', baseBand: 14, baseDamage: 7, governingAttr: 'TOU', governingElem: 'Stone', scalars: { scope: 1.0, potency: 1.05, uptime: 1.0, reliability: 1.0, mobility: 0.95, ccCap: 1.10, reaction: 1.0, cooldown: 1.0, risk: 1.0 }, description: '1.75s Root', ccDuration: 1.75, ccType: 'Root' },
+        { id: 'stone_safe_attack', name: 'Halfguard', family: 'Stone', variant: 'Attack', baseBand: 4, baseDamage: 9, governingAttr: 'STR', governingElem: 'Stone', scalars: { scope: 1.0, potency: 0.95, uptime: 1.0, reliability: 1.0, mobility: 0.90, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 0.80 }, description: 'Defensive strike' },
+        { id: 'stone_agg_attack', name: 'Quakeblade', family: 'Stone', variant: 'Attack', baseBand: 9, baseDamage: 22, governingAttr: 'STR', governingElem: 'Stone', scalars: { scope: 1.10, potency: 1.40, uptime: 1.0, reliability: 1.0, mobility: 0.80, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 1.15 }, description: 'Heavy slam' },
+        { id: 'stone_heavy_defense', name: 'Granite-Lock', family: 'Stone', variant: 'Defense', baseBand: 6, baseDamage: 5, mitigationMultiplier: 0.25, governingAttr: 'TOU', governingElem: 'Stone', scalars: { scope: 1.0, potency: 0.80, uptime: 1.50, reliability: 1.0, mobility: 0.70, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 0.70 }, description: '75% mitigation', duration: 4000 },
+        { id: 'air_attack', name: 'Galespike', family: 'Air', variant: 'Attack', baseBand: 4, baseDamage: 8, governingAttr: 'AGI', governingElem: 'Air', scalars: { scope: 1.0, potency: 1.0, uptime: 1.0, reliability: 0.98, mobility: 1.15, ccCap: 1.0, reaction: 1.05, cooldown: 1.0, risk: 0.95 }, description: 'Swift strike' },
+        { id: 'air_defense', name: 'Gale Brace', family: 'Air', variant: 'Defense', baseBand: 5, baseDamage: 4, mitigationMultiplier: 0.65, governingAttr: 'AGI', governingElem: 'Air', scalars: { scope: 1.0, potency: 0.95, uptime: 1.0, reliability: 1.0, mobility: 1.20, ccCap: 1.0, reaction: 1.10, cooldown: 1.0, risk: 0.88 }, description: '65% mitigation', duration: 1800 },
+        { id: 'air_control', name: 'Gale Gust', family: 'Air', variant: 'Control', baseBand: 11, baseDamage: 5, governingAttr: 'AGI', governingElem: 'Air', scalars: { scope: 1.10, potency: 0.90, uptime: 1.0, reliability: 1.0, mobility: 1.15, ccCap: 0.95, reaction: 1.15, cooldown: 1.0, risk: 0.95 }, description: '1.0s Knockback', ccDuration: 1.0, ccType: 'Knockback' },
+        { id: 'air_safe_attack', name: 'Breezelash', family: 'Air', variant: 'Attack', baseBand: 3, baseDamage: 6, governingAttr: 'AGI', governingElem: 'Air', scalars: { scope: 1.0, potency: 0.85, uptime: 1.0, reliability: 1.0, mobility: 1.25, ccCap: 1.0, reaction: 1.05, cooldown: 1.0, risk: 0.80 }, description: 'Mobile poke' },
+        { id: 'air_agg_attack', name: 'Stormrend', family: 'Air', variant: 'Attack', baseBand: 7, baseDamage: 15, governingAttr: 'AGI', governingElem: 'Air', scalars: { scope: 1.20, potency: 1.25, uptime: 1.0, reliability: 0.95, mobility: 1.30, ccCap: 1.0, reaction: 1.15, cooldown: 1.0, risk: 1.05 }, description: 'Rapid strikes' },
+        { id: 'spark_attack', name: 'Sparkpop', family: 'Spark', variant: 'Attack', baseBand: 5, baseDamage: 9, governingAttr: 'DEX', governingElem: 'Spark', scalars: { scope: 1.10, potency: 1.05, uptime: 1.0, reliability: 0.97, mobility: 1.05, ccCap: 1.0, reaction: 1.20, cooldown: 1.0, risk: 1.0 }, description: 'Electric burst' },
+        { id: 'spark_defense', name: 'Spark Net', family: 'Spark', variant: 'Defense', baseBand: 6, baseDamage: 5, mitigationMultiplier: 0.60, governingAttr: 'DEX', governingElem: 'Spark', scalars: { scope: 1.0, potency: 1.0, uptime: 1.0, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.15, cooldown: 1.0, risk: 0.90 }, description: '60% mitigation', duration: 2000 },
+        { id: 'spark_control', name: 'Thunder-Clap', family: 'Spark', variant: 'Control', baseBand: 12, baseDamage: 6, governingAttr: 'DEX', governingElem: 'Spark', scalars: { scope: 1.15, potency: 1.0, uptime: 1.0, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.25, cooldown: 1.0, risk: 1.0 }, description: '1.25s Stun', ccDuration: 1.25, ccType: 'Stun' },
+        { id: 'spark_safe_attack', name: 'Coilsnip', family: 'Spark', variant: 'Attack', baseBand: 3, baseDamage: 7, governingAttr: 'DEX', governingElem: 'Spark', scalars: { scope: 1.05, potency: 0.90, uptime: 1.0, reliability: 0.98, mobility: 1.10, ccCap: 1.0, reaction: 1.15, cooldown: 1.0, risk: 0.85 }, description: 'Quick zap' },
+        { id: 'spark_agg_attack', name: 'Arcburst', family: 'Spark', variant: 'Attack', baseBand: 8, baseDamage: 16, governingAttr: 'DEX', governingElem: 'Spark', scalars: { scope: 1.25, potency: 1.20, uptime: 1.0, reliability: 0.95, mobility: 1.05, ccCap: 1.0, reaction: 1.30, cooldown: 1.0, risk: 1.05 }, description: 'Chain lightning' },
+        { id: 'spark_heavy_defense', name: 'Arc Ward', family: 'Spark', variant: 'Defense', baseBand: 8, baseDamage: 6, mitigationMultiplier: 0.45, governingAttr: 'DEX', governingElem: 'Spark', scalars: { scope: 1.0, potency: 1.05, uptime: 1.15, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.25, cooldown: 1.0, risk: 0.85 }, description: '55% mitigation', duration: 2500 },
+        { id: 'verdant_attack', name: 'Verdant Strike', family: 'Verdant', variant: 'Attack', baseBand: 5, baseDamage: 8, governingAttr: 'SPR', governingElem: 'Verdant', scalars: { scope: 1.0, potency: 1.0, uptime: 1.25, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.10, cooldown: 1.0, risk: 1.0 }, description: 'Nature strike' },
+        { id: 'verdant_defense', name: 'Verdant Barrier', family: 'Verdant', variant: 'Defense', baseBand: 5, baseDamage: 3, mitigationMultiplier: 0.55, governingAttr: 'SPR', governingElem: 'Verdant', scalars: { scope: 1.0, potency: 0.90, uptime: 1.30, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.10, cooldown: 1.0, risk: 0.90 }, description: '55% mitigation', duration: 2200 },
+        { id: 'verdant_control', name: 'Verdant Vines', family: 'Verdant', variant: 'Control', baseBand: 13, baseDamage: 5, governingAttr: 'SPR', governingElem: 'Verdant', scalars: { scope: 1.05, potency: 0.95, uptime: 1.20, reliability: 1.0, mobility: 0.95, ccCap: 1.05, reaction: 1.15, cooldown: 1.0, risk: 1.0 }, description: '1.5s Entangle', ccDuration: 1.5, ccType: 'Entangle' },
+        { id: 'verdant_safe_attack', name: 'Echo Pierce', family: 'Verdant', variant: 'Attack', baseBand: 3, baseDamage: 6, governingAttr: 'SPR', governingElem: 'Verdant', scalars: { scope: 1.0, potency: 0.85, uptime: 1.35, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.10, cooldown: 1.0, risk: 0.85 }, description: 'Lingering HoT' },
+        { id: 'verdant_agg_attack', name: 'Wildspin', family: 'Verdant', variant: 'Attack', baseBand: 8, baseDamage: 14, governingAttr: 'SPR', governingElem: 'Verdant', scalars: { scope: 1.20, potency: 1.15, uptime: 1.30, reliability: 1.0, mobility: 1.05, ccCap: 1.0, reaction: 1.15, cooldown: 1.0, risk: 1.05 }, description: 'Whirling growth' },
+        { id: 'verdant_heavy_defense', name: 'Verdant Rootwall', family: 'Verdant', variant: 'Defense', baseBand: 7, baseDamage: 4, mitigationMultiplier: 0.35, governingAttr: 'SPR', governingElem: 'Verdant', scalars: { scope: 1.0, potency: 0.85, uptime: 1.50, reliability: 1.0, mobility: 0.75, ccCap: 1.0, reaction: 1.15, cooldown: 1.0, risk: 0.75 }, description: '65% mitigation', duration: 3800 },
+        { id: 'essence_attack', name: 'Aether Dash', family: 'Essence', variant: 'Attack', baseBand: 6, baseDamage: 10, governingAttr: 'INS', governingElem: 'Essence', scalars: { scope: 1.0, potency: 1.15, uptime: 1.0, reliability: 1.0, mobility: 1.10, ccCap: 1.0, reaction: 1.10, cooldown: 1.0, risk: 1.0 }, description: 'Phase strike' },
+        { id: 'essence_defense', name: 'Essence Shield', family: 'Essence', variant: 'Defense', baseBand: 6, baseDamage: 4, mitigationMultiplier: 0.60, governingAttr: 'INS', governingElem: 'Essence', scalars: { scope: 1.0, potency: 1.0, uptime: 1.15, reliability: 1.0, mobility: 1.05, ccCap: 1.0, reaction: 1.10, cooldown: 1.0, risk: 0.92 }, description: '60% mitigation', duration: 2100 },
+        { id: 'essence_control', name: 'Aether Suspend', family: 'Essence', variant: 'Control', baseBand: 15, baseDamage: 6, governingAttr: 'INS', governingElem: 'Essence', scalars: { scope: 1.0, potency: 1.05, uptime: 1.10, reliability: 1.0, mobility: 1.05, ccCap: 1.15, reaction: 1.20, cooldown: 1.0, risk: 1.0 }, description: '2.0s Suspend', ccDuration: 2.0, ccType: 'Suspend' },
+        { id: 'essence_safe_attack', name: 'Prism Touch', family: 'Essence', variant: 'Attack', baseBand: 4, baseDamage: 8, governingAttr: 'INS', governingElem: 'Essence', scalars: { scope: 1.0, potency: 1.00, uptime: 1.0, reliability: 1.0, mobility: 1.15, ccCap: 1.0, reaction: 1.10, cooldown: 1.0, risk: 0.90 }, description: 'Phase tap' },
+        { id: 'essence_agg_attack', name: 'Essence Fission', family: 'Essence', variant: 'Attack', baseBand: 10, baseDamage: 20, governingAttr: 'INS', governingElem: 'Essence', scalars: { scope: 1.15, potency: 1.35, uptime: 1.0, reliability: 1.0, mobility: 1.10, ccCap: 1.0, reaction: 1.20, cooldown: 1.0, risk: 1.10 }, description: 'Reality tear' },
+        { id: 'essence_heavy_defense', name: 'Stasis Tower', family: 'Essence', variant: 'Defense', baseBand: 9, baseDamage: 5, mitigationMultiplier: 0.40, governingAttr: 'INS', governingElem: 'Essence', scalars: { scope: 1.0, potency: 1.10, uptime: 1.25, reliability: 1.0, mobility: 0.85, ccCap: 1.0, reaction: 1.15, cooldown: 1.0, risk: 0.80 }, description: '60% mitigation', duration: 3000 },
+        { id: 'water_special', name: 'Torrent Cascade', family: 'Water', variant: 'Special', baseBand: 25, baseDamage: 35, governingAttr: 'SPR', governingElem: 'Water', scalars: { scope: 1.20, potency: 1.30, uptime: 1.15, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.20, cooldown: 1.0, risk: 1.0 }, description: 'Wave burst (R≥0.5)', requiresResonance: 0.5 },
+        { id: 'stone_special', name: 'Earthshatter', family: 'Stone', variant: 'Special', baseBand: 30, baseDamage: 50, governingAttr: 'STR', governingElem: 'Stone', scalars: { scope: 1.30, potency: 1.45, uptime: 1.0, reliability: 1.0, mobility: 0.85, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 1.10 }, description: 'Massive AoE (R≥0.5)', requiresResonance: 0.5 },
+        { id: 'air_special', name: 'Cyclone', family: 'Air', variant: 'Special', baseBand: 22, baseDamage: 28, governingAttr: 'AGI', governingElem: 'Air', scalars: { scope: 1.25, potency: 1.25, uptime: 1.0, reliability: 1.0, mobility: 1.25, ccCap: 1.0, reaction: 1.15, cooldown: 1.0, risk: 0.95 }, description: 'Mobile vortex (R≥0.5)', requiresResonance: 0.5 },
+        { id: 'spark_special', name: 'Lightning Storm', family: 'Spark', variant: 'Special', baseBand: 26, baseDamage: 38, governingAttr: 'DEX', governingElem: 'Spark', scalars: { scope: 1.35, potency: 1.30, uptime: 1.0, reliability: 0.98, mobility: 1.05, ccCap: 1.0, reaction: 1.30, cooldown: 1.0, risk: 1.05 }, description: 'Chain AoE (R≥0.5)', requiresResonance: 0.5 },
+        { id: 'verdant_special', name: 'Regrowth Pulse', family: 'Verdant', variant: 'Special', baseBand: 24, baseDamage: 30, governingAttr: 'SPR', governingElem: 'Verdant', scalars: { scope: 1.15, potency: 1.20, uptime: 1.40, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.20, cooldown: 1.0, risk: 1.0 }, description: 'AoE HoT (R≥0.5)', requiresResonance: 0.5 },
+        { id: 'essence_special', name: 'Void Rift', family: 'Essence', variant: 'Special', baseBand: 32, baseDamage: 45, governingAttr: 'INS', governingElem: 'Essence', scalars: { scope: 1.20, potency: 1.40, uptime: 1.10, reliability: 1.0, mobility: 1.15, ccCap: 1.0, reaction: 1.25, cooldown: 1.0, risk: 1.05 }, description: 'Reality tear (R≥0.5)', requiresResonance: 0.5 },
+        { id: 'fire_ultimate', name: 'Inferno', family: 'Fire', variant: 'Special', baseBand: 40, baseDamage: 70, governingAttr: 'STR', governingElem: 'Fire', scalars: { scope: 1.50, potency: 1.60, uptime: 1.0, reliability: 1.0, mobility: 0.90, ccCap: 1.0, reaction: 1.25, cooldown: 1.0, risk: 1.15 }, description: 'Massive fire (R≥0.7)', requiresResonance: 0.7 },
+        { id: 'water_ultimate', name: 'Tidal Wave', family: 'Water', variant: 'Special', baseBand: 38, baseDamage: 60, governingAttr: 'SPR', governingElem: 'Water', scalars: { scope: 1.45, potency: 1.50, uptime: 1.20, reliability: 1.0, mobility: 1.0, ccCap: 1.0, reaction: 1.30, cooldown: 1.0, risk: 1.10 }, description: 'Tsunami (R≥0.7)', requiresResonance: 0.7 },
+        { id: 'stone_ultimate', name: 'Meteor Strike', family: 'Stone', variant: 'Special', baseBand: 42, baseDamage: 80, governingAttr: 'STR', governingElem: 'Stone', scalars: { scope: 1.40, potency: 1.70, uptime: 1.0, reliability: 1.0, mobility: 0.80, ccCap: 1.0, reaction: 1.0, cooldown: 1.0, risk: 1.20 }, description: 'Devastating (R≥0.7)', requiresResonance: 0.7 },
+        { id: 'air_ultimate', name: 'Hurricane', family: 'Air', variant: 'Special', baseBand: 35, baseDamage: 55, governingAttr: 'AGI', governingElem: 'Air', scalars: { scope: 1.55, potency: 1.45, uptime: 1.0, reliability: 1.0, mobility: 1.30, ccCap: 1.0, reaction: 1.20, cooldown: 1.0, risk: 1.0 }, description: 'Massive vortex (R≥0.7)', requiresResonance: 0.7 },
+        { id: 'spark_ultimate', name: 'Thunderstorm', family: 'Spark', variant: 'Special', baseBand: 36, baseDamage: 65, governingAttr: 'DEX', governingElem: 'Spark', scalars: { scope: 1.60, potency: 1.55, uptime: 1.0, reliability: 1.0, mobility: 1.10, ccCap: 1.0, reaction: 1.40, cooldown: 1.0, risk: 1.10 }, description: 'Chain storm (R≥0.7)', requiresResonance: 0.7 },
+        { id: 'verdant_ultimate', name: 'World Tree', family: 'Verdant', variant: 'Special', baseBand: 34, baseDamage: 50, governingAttr: 'SPR', governingElem: 'Verdant', scalars: { scope: 1.35, potency: 1.40, uptime: 1.50, reliability: 1.0, mobility: 0.95, ccCap: 1.0, reaction: 1.25, cooldown: 1.0, risk: 1.05 }, description: 'Massive growth (R≥0.7)', requiresResonance: 0.7 },
+        { id: 'essence_ultimate', name: 'Reality Collapse', family: 'Essence', variant: 'Special', baseBand: 45, baseDamage: 75, governingAttr: 'INS', governingElem: 'Essence', scalars: { scope: 1.40, potency: 1.65, uptime: 1.15, reliability: 1.0, mobility: 1.20, ccCap: 1.0, reaction: 1.35, cooldown: 1.0, risk: 1.15 }, description: 'Void collapse (R≥0.7)', requiresResonance: 0.7 }
+      ];
+
+      const initialCharacter = {
+        attributes: { STR: 40, DEX: 40, TOU: 40, AGI: 40, SPR: 40, INS: 40, CHA: 40 },
+        elements: { Fire: 40, Water: 40, Stone: 40, Air: 40, Spark: 40, Verdant: 40, Essence: 40 },
+        weapon: 'Long Swords',
+        currentER: 100,
+        maxER: 100,
+        hp: 1000,
+        maxHp: 1000,
+        activeDefense: null,
+        ccEffects: []
+      };
+
+      function characterReducer(state, action) {
+        switch (action.type) {
+          case 'SET_ATTRIBUTE':
+            return { ...state, attributes: { ...state.attributes, [action.attr]: action.value } };
+          case 'SET_ELEMENT':
+            return { ...state, elements: { ...state.elements, [action.elem]: action.value } };
+          case 'SET_WEAPON':
+            return { ...state, weapon: action.weapon };
+          case 'SPEND_ER':
+            return { ...state, currentER: Math.max(0, state.currentER - action.amount) };
+          case 'GAIN_ER':
+            return { ...state, currentER: Math.min(100, state.currentER + action.amount) };
+          case 'PASSIVE_REGEN':
+            return { ...state, currentER: Math.min(state.maxER, state.currentER + 1) };
+          case 'TAKE_DAMAGE':
+            const mitigation = state.activeDefense ? state.activeDefense.mitigationMultiplier : 1.0;
+            return { ...state, hp: Math.max(0, state.hp - Math.round(action.amount * mitigation)), currentER: Math.min(100, state.currentER + 1) };
+          case 'RESET_HP':
+            return { ...state, hp: state.maxHp, activeDefense: null, ccEffects: [] };
+          case 'SET_DEFENSE':
+            return { ...state, activeDefense: action.defense };
+          case 'CLEAR_DEFENSE':
+            return { ...state, activeDefense: null };
+          case 'ADD_CC':
+            const cappedDuration = Math.min(action.duration, 2.0);
+            return { 
+              ...state, 
+              ccEffects: [...state.ccEffects, { 
+                type: action.ccType, 
+                duration: cappedDuration, 
+                applied: Date.now() 
+              }] 
+            };
+          case 'UPDATE_CC':
+            return {
+              ...state,
+              ccEffects: state.ccEffects.filter(cc => (Date.now() - cc.applied) / 1000 < cc.duration)
+            };
+          default:
+            return state;
+        }
+      }
+
+      const initialEnemy = {
+        hp: 500,
+        maxHp: 500,
+        currentER: 100,
+        maxER: 100,
+        attributes: { STR: 40, DEX: 40, TOU: 40, AGI: 40, SPR: 40, INS: 40, CHA: 40 },
+        elements: { Fire: 40, Water: 40, Stone: 40, Air: 40, Spark: 40, Verdant: 40, Essence: 40 },
+        weapon: 'Staffs',
+        aiEnabled: false,
+        activeDefense: null,
+        ccEffects: []
+      };
+
+      function enemyReducer(state, action) {
+        switch (action.type) {
+          case 'TAKE_DAMAGE':
+            const mitigation = state.activeDefense ? state.activeDefense.mitigationMultiplier : 1.0;
+            return { ...state, hp: Math.max(0, state.hp - Math.round(action.amount * mitigation)) };
+          case 'RESET':
+            return { ...state, hp: state.maxHp, currentER: state.maxER, activeDefense: null, ccEffects: [] };
+          case 'SPEND_ER':
+            return { ...state, currentER: Math.max(0, state.currentER - action.amount) };
+          case 'GAIN_ER':
+            return { ...state, currentER: Math.min(state.maxER, state.currentER + action.amount) };
+          case 'PASSIVE_REGEN':
+            return { ...state, currentER: Math.min(state.maxER, state.currentER + 1) };
+          case 'TOGGLE_AI':
+            return { ...state, aiEnabled: !state.aiEnabled };
+          case 'SET_DEFENSE':
+            return { ...state, activeDefense: action.defense };
+          case 'CLEAR_DEFENSE':
+            return { ...state, activeDefense: null };
+          case 'ADD_CC':
+            const cappedDuration = Math.min(action.duration, 2.0);
+            return { 
+              ...state, 
+              ccEffects: [...state.ccEffects, { 
+                type: action.ccType, 
+                duration: cappedDuration, 
+                applied: Date.now() 
+              }] 
+            };
+          case 'UPDATE_CC':
+            return {
+              ...state,
+              ccEffects: state.ccEffects.filter(cc => (Date.now() - cc.applied) / 1000 < cc.duration)
+            };
+          default:
+            return state;
+        }
+      }
+
+      const LANE_STYLES = {
+        Attack: { active: 'bg-blue-900 border-blue-600', hover: 'hover:bg-blue-800' },
+        Defense: { active: 'bg-green-900 border-green-600', hover: 'hover:bg-green-800' },
+        Control: { active: 'bg-purple-900 border-purple-600', hover: 'hover:bg-purple-800' },
+        Special: { active: 'bg-yellow-900 border-yellow-600', hover: 'hover:bg-yellow-800' }
+      };
+
+      function CombatSandbox() {
+        const [character, dispatchCharacter] = useReducer(characterReducer, initialCharacter);
+        const [enemy, dispatchEnemy] = useReducer(enemyReducer, initialEnemy);
+        const [combatState, setCombatState] = useState({ state: COMBAT_STATES.IDLE, ability: null, progress: 0, startTime: 0 });
+        const [combatLog, setCombatLog] = useState([]);
+        const [selectedAbilities, setSelectedAbilities] = useState({
+          attack: 'fire_attack',
+          defense: 'fire_defense',
+          control: 'fire_control',
+          special: 'fire_special'
+        });
+        const [perfectTimingWindow, setPerfectTimingWindow] = useState(null);
+        const [ccSuccessTimestamps, setCcSuccessTimestamps] = useState({});
+
+        const animationFrame = useRef(null);
+
+        const addLog = (msg, type) => setCombatLog(prev => [{ message: msg, type, time: Date.now() }, ...prev.slice(0, 19)]);
+
+        useEffect(() => {
+          const interval = setInterval(() => {
+            dispatchCharacter({ type: 'PASSIVE_REGEN' });
+            dispatchEnemy({ type: 'PASSIVE_REGEN' });
+            dispatchCharacter({ type: 'UPDATE_CC' });
+            dispatchEnemy({ type: 'UPDATE_CC' });
+          }, 1000);
+          return () => clearInterval(interval);
+        }, []);
+
+        useEffect(() => {
+          if (combatState.state === COMBAT_STATES.IDLE) {
+            if (animationFrame.current) {
+              cancelAnimationFrame(animationFrame.current);
+              animationFrame.current = null;
+            }
+            return;
+          }
+
+          const timing = calculateAnimationTiming(character.weapon, character.attributes.AGI);
+          const phaseDuration = combatState.state === COMBAT_STATES.WIND_UP ? timing.windUp : timing.recovery;
+
+          const animate = () => {
+            const elapsed = (Date.now() - combatState.startTime) / 1000;
+            const progress = Math.min(elapsed / phaseDuration, 1);
+
+            setCombatState(prev => ({ ...prev, progress }));
+
+            if (progress >= 1) {
+              if (combatState.state === COMBAT_STATES.WIND_UP) {
+                const ability = combatState.ability;
+                const dmg = calculateDamage(ability, character);
+                dispatchEnemy({ type: 'TAKE_DAMAGE', amount: dmg });
+                addLog(`${ability.name} hits for ${dmg} damage`, 'damage');
+                
+                if (ability.variant === 'Attack') {
+                  const erGain = WEAPONS[character.weapon].erGainedOnHit || 2;
+                  dispatchCharacter({ type: 'GAIN_ER', amount: erGain });
+                  addLog(`+${erGain} ER`, 'er');
+                } else if (ability.variant === 'Defense') {
+                  dispatchCharacter({ type: 'SET_DEFENSE', defense: ability });
+                  
+                  const perfectWindow = ability.perfectWindow || 0.3;
+                  setPerfectTimingWindow({ 
+                    startTime: Date.now(), 
+                    duration: perfectWindow * 1000,
+                    ability 
+                  });
+                  
+                  addLog(`Defense active! ${perfectWindow.toFixed(1)}s perfect window`, 'info');
+                  
+                  setTimeout(() => {
+                    setPerfectTimingWindow(null);
+                    dispatchCharacter({ type: 'CLEAR_DEFENSE' });
+                    addLog('Defense ended', 'info');
+                  }, ability.duration || 2000);
+                } else if (ability.variant === 'Control') {
+                  if (ability.ccDuration && ability.ccType) {
+                    const cappedDuration = Math.min(ability.ccDuration, 2.0);
+                    dispatchEnemy({ type: 'ADD_CC', ccType: ability.ccType, duration: cappedDuration });
+                    addLog(`Applied ${ability.ccType} (${cappedDuration}s, capped at 2.0s)`, 'info');
+                    
+                    const now = Date.now();
+                    const lastSuccess = ccSuccessTimestamps[ability.id] || 0;
+                    const timeSinceLastSuccess = (now - lastSuccess) / 1000;
+                    
+                    if (timeSinceLastSuccess >= 2.0) {
+                      dispatchCharacter({ type: 'GAIN_ER', amount: 1 });
+                      addLog(`CC success! +1 ER (2s gate passed)`, 'er');
+                      setCcSuccessTimestamps(prev => ({ ...prev, [ability.id]: now }));
+                    } else {
+                      addLog(`CC applied (ER gain on cooldown: ${(2.0 - timeSinceLastSuccess).toFixed(1)}s)`, 'info');
+                    }
+                  }
+                }
+                
+                setCombatState({ state: COMBAT_STATES.RECOVERY, ability, progress: 0, startTime: Date.now() });
+              } else {
+                setCombatState({ state: COMBAT_STATES.IDLE, ability: null, progress: 0, startTime: 0 });
+              }
+            } else {
+              animationFrame.current = requestAnimationFrame(animate);
+            }
+          };
+
+          animationFrame.current = requestAnimationFrame(animate);
+
+          return () => {
+            if (animationFrame.current) {
+              cancelAnimationFrame(animationFrame.current);
+            }
+          };
+        }, [combatState.state, combatState.startTime, combatState.ability, character.weapon, character.attributes.AGI, ccSuccessTimestamps]);
+
+        useEffect(() => {
+          if (!enemy.aiEnabled || combatState.state !== COMBAT_STATES.IDLE || character.hp <= 0 || enemy.hp <= 0) return;
+
+          const timer = setTimeout(() => {
+            const affordable = ABILITIES.filter(a => calculateERCost(a, enemy).finalCost <= enemy.currentER);
+            if (affordable.length === 0) return;
+            
+            const ability = affordable[Math.floor(Math.random() * affordable.length)];
+            
+            const cost = calculateERCost(ability, enemy);
+            dispatchEnemy({ type: 'SPEND_ER', amount: cost.finalCost });
+            addLog(`Enemy: ${ability.name}`, 'info');
+            
+            const dmg = calculateDamage(ability, enemy);
+            dispatchCharacter({ type: 'TAKE_DAMAGE', amount: dmg });
+            addLog(`Enemy hits for ${dmg} damage`, 'damage');
+            
+            if (ability.variant === 'Attack') {
+              dispatchEnemy({ type: 'GAIN_ER', amount: WEAPONS[enemy.weapon].erGainedOnHit || 2 });
+            } else if (ability.variant === 'Defense') {
+              dispatchEnemy({ type: 'SET_DEFENSE', defense: ability });
+              setTimeout(() => dispatchEnemy({ type: 'CLEAR_DEFENSE' }), ability.duration || 2000);
+            }
+          }, 1500 + Math.random() * 1000);
+
+          return () => clearTimeout(timer);
+        }, [enemy.aiEnabled, enemy.currentER, combatState.state, character.hp, enemy.hp, enemy.weapon]);
+
+        const handleCast = (ability) => {
+          if (combatState.state !== COMBAT_STATES.IDLE) return;
+          
+          const cost = calculateERCost(ability, character);
+          if (character.currentER < cost.finalCost) {
+            addLog(`Not enough ER for ${ability.name}`, 'error');
+            return;
+          }
+          
+          dispatchCharacter({ type: 'SPEND_ER', amount: cost.finalCost });
+          addLog(`Casting ${ability.name} (-${cost.finalCost.toFixed(1)} ER)`, 'cast');
+          
+          setCombatState({ state: COMBAT_STATES.WIND_UP, ability, progress: 0, startTime: Date.now() });
+        };
+        
+        const handleCancel = () => {
+          if (combatState.state !== COMBAT_STATES.WIND_UP) return;
+          
+          const cost = calculateERCost(combatState.ability, character);
+          const refund = cost.finalCost * 0.4;
+          dispatchCharacter({ type: 'GAIN_ER', amount: refund });
+          addLog(`Cancelled! Refunded ${refund.toFixed(1)} ER (40%)`, 'info');
+          
+          setCombatState({ state: COMBAT_STATES.IDLE, ability: null, progress: 0, startTime: 0 });
+        };
+        
+        const handlePerfectTiming = () => {
+          if (!perfectTimingWindow) return;
+          
+          const now = Date.now();
+          const elapsed = now - perfectTimingWindow.startTime;
+          
+          if (elapsed <= perfectTimingWindow.duration) {
+            dispatchCharacter({ type: 'GAIN_ER', amount: 4 });
+            addLog(`PERFECT PARRY! +4 ER`, 'er');
+            setPerfectTimingWindow(null);
+          } else {
+            addLog(`Too late! Perfect window missed`, 'error');
+          }
+        };
+
+        const handleReset = () => {
+          dispatchCharacter({ type: 'RESET_HP' });
+          dispatchEnemy({ type: 'RESET' });
+          setCombatLog([]);
+          setCombatState({ state: COMBAT_STATES.IDLE, ability: null, progress: 0, startTime: 0 });
+          addLog('Combat reset', 'info');
+        };
+
+        const getAbility = (id) => ABILITIES.find(a => a.id === id);
+        
+        const getTopResonances = () => {
+          const allResonances = ELEMENTS.map(elem => {
+            const resonances = ATTRIBUTES.map(attr => ({
+              attr,
+              value: calculateResonance(character.attributes[attr], character.elements[elem]),
+              attrVal: character.attributes[attr],
+              elemVal: character.elements[elem]
+            })).sort((a, b) => b.value - a.value);
+            
+            return {
+              elem,
+              ...resonances[0],
+              tier: getResonanceTier(resonances[0].value)
+            };
+          }).sort((a, b) => b.value - a.value);
+          
+          return allResonances;
+        };
+        
+        const getHighestResonanceTier = () => {
+          const resonances = getTopResonances();
+          const highest = resonances[0].value;
+          if (highest >= 0.7) return 'Merged';
+          if (highest >= 0.5) return 'Bonded';
+          if (highest >= 0.3) return 'Touched';
+          return 'Base';
+        };
+
+        const getRelevantAbilities = (variant) => {
+          const topResonances = getTopResonances();
+          const highestTier = getHighestResonanceTier();
+          
+          const relevant = ABILITIES.filter(a => {
+            if (a.variant !== variant) return false;
+            
+            if (a.requiresResonance) {
+              if (a.requiresResonance >= 0.7 && highestTier === 'Base') return false;
+              if (a.requiresResonance >= 0.7 && highestTier === 'Touched') return false;
+              if (a.requiresResonance >= 0.5 && highestTier === 'Base') return false;
+            }
+            
+            const elemValue = character.elements[a.governingElem] || 0;
+            if (elemValue < 25) return false;
+            
+            return true;
+          });
+          
+          return relevant.sort((a, b) => {
+            const aElemIndex = topResonances.findIndex(r => r.elem === a.governingElem);
+            const bElemIndex = topResonances.findIndex(r => r.elem === b.governingElem);
+            return aElemIndex - bElemIndex;
+          });
+        };
+        
+        const isAbilityRecommended = (ability) => {
+          const topResonances = getTopResonances().slice(0, 2);
+          return topResonances.some(r => r.elem === ability.governingElem);
+        };
+
+        return (
+          <div className="min-h-screen bg-gray-900 text-white p-4">
+            <header className="mb-4">
+              <h1 className="text-2xl font-bold">Worlds Within - Combat Sandbox</h1>
+              <p className="text-sm text-gray-400">Wind-Up/Recovery • 23 Weapons • {ABILITIES.length} Abilities • Perfect Timing • CC System</p>
+            </header>
+
+            <div className="grid grid-cols-12 gap-4">
+              <div className="col-span-12 lg:col-span-3 bg-gray-800 rounded-lg p-3">
+                <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+                  <span role="img" aria-label="settings">⚙️</span>
+                  Build Lab
+                </h2>
+                
+                <div className="mb-3 p-2 bg-purple-900 bg-opacity-30 rounded border border-purple-600">
+                  <div className="text-xs font-semibold text-purple-300 mb-2">Quick Resonance Presets</div>
+                  <div className="grid grid-cols-3 gap-1">
+                    <button 
+                      onClick={() => {
+                        dispatchCharacter({ type: 'SET_ATTRIBUTE', attr: 'STR', value: 50 });
+                        dispatchCharacter({ type: 'SET_ELEMENT', elem: 'Fire', value: 50 });
+                      }}
+                      className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs">
+                      STR×Fire 0.25
+                    </button>
+                    <button 
+                      onClick={() => {
+                        dispatchCharacter({ type: 'SET_ATTRIBUTE', attr: 'STR', value: 71 });
+                        dispatchCharacter({ type: 'SET_ELEMENT', elem: 'Fire', value: 71 });
+                      }}
+                      className="px-2 py-1 bg-purple-700 hover:bg-purple-600 rounded text-xs">
+                      Bonded 0.50
+                    </button>
+                    <button 
+                      onClick={() => {
+                        dispatchCharacter({ type: 'SET_ATTRIBUTE', attr: 'STR', value: 90 });
+                        dispatchCharacter({ type: 'SET_ELEMENT', elem: 'Fire', value: 90 });
+                      }}
+                      className="px-2 py-1 bg-yellow-700 hover:bg-yellow-600 rounded text-xs">
+                      Merged 0.81
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="mb-3">
+                  <label className="text-xs font-semibold mb-1 block">Weapon</label>
+                  <select
+                    value={character.weapon}
+                    onChange={(e) => dispatchCharacter({ type: 'SET_WEAPON', weapon: e.target.value })}
+                    className="w-full bg-gray-700 text-white rounded px-2 py-1.5 text-sm"
+                  >
+                    {Object.keys(WEAPONS).map(w => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Dmg: ×{WEAPONS[character.weapon].damageMultiplier.toFixed(2)} | 
+                    ER/hit: +{WEAPONS[character.weapon].erGainedOnHit}
+                  </div>
+                </div>
+
+                <div className="mb-3 p-2.5 bg-gray-900 rounded">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-xs font-semibold">ER</span>
+                    <span className="text-base font-bold text-cyan-400">
+                      {character.currentER.toFixed(0)} / {character.maxER}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2.5">
+                    <div className="bg-cyan-500 h-2.5 rounded-full transition-all" style={{ width: `${(character.currentER / character.maxER) * 100}%` }} />
+                  </div>
+                </div>
+                
+                <h3 className="text-xs font-bold mb-2 mt-4 text-orange-400">Attributes</h3>
+                {ATTRIBUTES.map(attr => (
+                  <div key={attr} className="mb-2">
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs">{attr}</label>
+                      <span className="text-xs font-bold">{character.attributes[attr]}</span>
+                    </div>
+                    <input type="range" min="0" max="100" value={character.attributes[attr]}
+                      onChange={(e) => dispatchCharacter({ type: 'SET_ATTRIBUTE', attr, value: parseInt(e.target.value, 10) })}
+                      className="w-full h-2 rounded" />
+                  </div>
+                ))}
+                
+                <h3 className="text-xs font-bold mb-2 mt-4 text-purple-400">Elements</h3>
+                {ELEMENTS.map(elem => (
+                  <div key={elem} className="mb-2">
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs">{elem}</label>
+                      <span className="text-xs font-bold">{character.elements[elem]}</span>
+                    </div>
+                    <input type="range" min="0" max="100" value={character.elements[elem]}
+                      onChange={(e) => dispatchCharacter({ type: 'SET_ELEMENT', elem, value: parseInt(e.target.value, 10) })}
+                      className="w-full h-1.5 rounded" />
+                  </div>
+                ))}
+                
+                <div className="mt-4 p-3 bg-gray-900 rounded border border-purple-500">
+                  <h4 className="text-xs font-bold text-purple-300 mb-2">Live Resonances (All Elements)</h4>
+                  {ELEMENTS.map(elem => {
+                    const resonances = ATTRIBUTES.map(attr => ({
+                      attr,
+                      value: calculateResonance(character.attributes[attr], character.elements[elem]),
+                      attrVal: character.attributes[attr],
+                      elemVal: character.elements[elem]
+                    })).sort((a, b) => b.value - a.value);
+                    
+                    const top = resonances[0];
+                    const tier = getResonanceTier(top.value);
+                    
+                    return (
+                      <div key={elem} className="mb-2 p-2 bg-gray-800 rounded">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-bold text-white">{elem}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                            tier === 'Merged' ? 'bg-yellow-600' :
+                            tier === 'Bonded' ? 'bg-purple-600' :
+                            tier === 'Touched' ? 'bg-blue-600' :
+                            'bg-gray-700'
+                          }`}>{tier}</span>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          Best: {top.attr} {top.attrVal} × {elem} {top.elemVal} = <span className="font-mono text-white font-bold">{top.value.toFixed(3)}</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
+                          <div className={`h-1.5 rounded-full transition-all ${
+                            tier === 'Merged' ? 'bg-yellow-500' :
+                            tier === 'Bonded' ? 'bg-purple-500' :
+                            tier === 'Touched' ? 'bg-blue-500' :
+                            'bg-gray-500'
+                          }`} style={{ width: `${Math.min(top.value * 100, 100)}%` }} />
+                        </div>
+                        {top.value >= 0.5 && top.value < 0.7 && (
+                          <div className="text-xs text-purple-400 mt-1">✓ Bonded specials available</div>
+                        )}
+                        {top.value >= 0.7 && (
+                          <div className="text-xs text-yellow-400 mt-1">✓ Merged ultimates available</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="col-span-12 lg:col-span-6">
+                <div className="bg-gray-800 rounded-lg p-4 mb-4">
+                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-3 gap-2">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <span role="img" aria-label="target">🎯</span>
+                      Combat Arena
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      {combatState.state === COMBAT_STATES.WIND_UP && (
+                        <button onClick={handleCancel} className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 rounded text-sm font-semibold">
+                          Cancel (40% refund)
+                        </button>
+                      )}
+                      {perfectTimingWindow && (
+                        <button onClick={handlePerfectTiming} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm font-semibold animate-pulse">
+                          PERFECT PARRY!
+                        </button>
+                      )}
+                      <button onClick={() => dispatchEnemy({ type: 'TOGGLE_AI' })}
+                        className={`px-3 py-1.5 rounded text-sm font-semibold ${enemy.aiEnabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>
+                        {enemy.aiEnabled ? 'Stop AI' : 'Start AI'}
+                      </button>
+                      <button onClick={handleReset} className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm font-semibold">
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-900 border-2 border-gray-700 rounded p-4 h-64 flex justify-between items-center px-8">
+                    <div className="text-center relative">
+                      <div className={`w-16 h-16 rounded-full mb-2 flex items-center justify-center text-2xl transition-colors ${
+                        combatState.state === COMBAT_STATES.WIND_UP ? 'bg-yellow-500' :
+                        combatState.state === COMBAT_STATES.RECOVERY ? 'bg-red-500' :
+                        'bg-blue-500'
+                      }`}>👤</div>
+                      {combatState.state !== COMBAT_STATES.IDLE && (
+                        <div className="absolute -bottom-2 left-0 right-0">
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div className={`h-2 rounded-full transition-all ${
+                              combatState.state === COMBAT_STATES.WIND_UP ? 'bg-yellow-500' : 'bg-red-500'
+                            }`} style={{ width: `${combatState.progress * 100}%` }} />
+                          </div>
+                          <div className="text-xs mt-1 font-bold text-yellow-400">
+                            {combatState.state === COMBAT_STATES.WIND_UP ? 'WIND-UP' : 'RECOVERY'}
+                          </div>
+                        </div>
+                      )}
+                      <div className="text-xs font-bold mt-4">PLAYER</div>
+                      <div className="text-xs">HP: {character.hp}/{character.maxHp}</div>
+                      <div className="text-xs">ER: {character.currentER.toFixed(0)}</div>
+                      {character.activeDefense && <div className="text-xs text-green-400 mt-1">Defense: {((1 - character.activeDefense.mitigationMultiplier) * 100).toFixed(0)}%</div>}
+                      {character.ccEffects.length > 0 && (
+                        <div className="text-xs text-red-400 mt-1">
+                          CC: {character.ccEffects.map(cc => cc.type).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="text-4xl">⚔️</div>
+                    
+                    <div className="text-center">
+                      <div className="w-16 h-16 rounded-full bg-red-600 mb-2 flex items-center justify-center text-2xl">🎯</div>
+                      <div className="text-xs font-bold">ENEMY</div>
+                      <div className="text-xs">HP: {enemy.hp}/{enemy.maxHp}</div>
+                      <div className="text-xs">ER: {enemy.currentER.toFixed(0)}</div>
+                      {enemy.activeDefense && <div className="text-xs text-green-400 mt-1">Defense: {((1 - enemy.activeDefense.mitigationMultiplier) * 100).toFixed(0)}%</div>}
+                      {enemy.ccEffects.length > 0 && (
+                        <div className="text-xs text-red-400 mt-1">
+                          CC: {enemy.ccEffects.map(cc => cc.type).join(', ')}
+                        </div>
+                      )}
+                      {enemy.aiEnabled && <div className="text-xs text-green-400 mt-1">AI ACTIVE</div>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+                    <span role="img" aria-label="swords">🗡️</span>
+                    Combat Lanes
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+                    {['attack', 'defense', 'control', 'special'].map(lane => {
+                      const variant = lane === 'attack' ? 'Attack' : lane === 'defense' ? 'Defense' : lane === 'control' ? 'Control' : 'Special';
+                      const relevantAbilities = getRelevantAbilities(variant);
+                      
+                      return (
+                        <div key={lane}>
+                          <select value={selectedAbilities[lane]}
+                            onChange={(e) => setSelectedAbilities(prev => ({ ...prev, [lane]: e.target.value }))}
+                            className="w-full bg-gray-700 text-white text-xs rounded px-2 py-1">
+                            {relevantAbilities.map(a => {
+                              const recommended = isAbilityRecommended(a);
+                              return (
+                                <option key={a.id} value={a.id}>
+                                  {recommended ? '⭐ ' : ''}{a.name}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {relevantAbilities.length} / {ABILITIES.filter(ab => ab.variant === variant).length}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {[
+                      { ability: getAbility(selectedAbilities.attack), lane: 'A' },
+                      { ability: getAbility(selectedAbilities.defense), lane: 'D' },
+                      { ability: getAbility(selectedAbilities.control), lane: 'C' },
+                      { ability: getAbility(selectedAbilities.special), lane: 'S' }
+                    ].map(({ ability, lane }) => {
+                      if (!ability) return null;
+                      const cost = calculateERCost(ability, character);
+                      const canAfford = character.currentER >= cost.finalCost;
+                      const meetsResonance = !ability.requiresResonance || cost.resonance >= ability.requiresResonance;
+                      const canCast = canAfford && meetsResonance && combatState.state === COMBAT_STATES.IDLE;
+                      const styles = LANE_STYLES[ability.variant];
+                      
+                      return (
+                        <button key={lane} onClick={() => handleCast(ability)} disabled={!canCast}
+                          className={`p-4 rounded border-2 transition-all relative ${canCast ? `${styles.active} ${styles.hover}` : 'bg-gray-800 border-gray-700 opacity-40 cursor-not-allowed'}`}
+                          title={!meetsResonance ? `Requires ${ability.governingAttr}×${ability.governingElem} ≥ ${ability.requiresResonance}. You have: ${cost.resonance.toFixed(3)}` : !canAfford ? `Need ${(cost.finalCost - character.currentER).toFixed(1)} more ER` : ''}>
+                          <div className="text-xs font-bold mb-1 text-gray-400">{lane}</div>
+                          <div className="text-sm font-bold mb-1">{ability.name}</div>
+                          {isAbilityRecommended(ability) && (
+                            <div className="text-xs text-yellow-400 mb-1">⭐ Recommended</div>
+                          )}
+                          <div className={`text-2xl font-bold ${canAfford ? 'text-cyan-400' : 'text-red-400'}`}>{cost.finalCost.toFixed(1)}</div>
+                          <div className="text-xs text-gray-400">ER</div>
+                          <div className="text-xs mt-1 text-gray-300">{ability.description}</div>
+                          {ability.requiresResonance && (
+                            <div className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-xs font-bold ${
+                              meetsResonance ? 'bg-purple-600 text-white' : 'bg-red-600 text-white'
+                            }`}>
+                              R≥{ability.requiresResonance.toFixed(1)}
+                            </div>
+                          )}
+                          {cost.resonanceTier !== 'Base' && !ability.requiresResonance && (
+                            <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-xs font-bold bg-blue-600 text-white">
+                              {cost.resonanceTier}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-gray-900 rounded text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-gray-400">Weapon:</span>
+                        <span className="font-bold text-cyan-400 ml-1">{character.weapon}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Wind-Up:</span>
+                        <span className="font-mono ml-1 text-white">{calculateAnimationTiming(character.weapon, character.attributes.AGI).windUp.toFixed(2)}s</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-12 lg:col-span-3">
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+                    <span role="img" aria-label="activity">📈</span>
+                    Combat Log
+                  </h3>
+                  <div className="space-y-1 text-sm max-h-96 overflow-y-auto">
+                    {combatLog.length === 0 ? (
+                      <p className="text-gray-500 italic text-xs">Cast an ability to begin</p>
+                    ) : (
+                      combatLog.map((log, i) => (
+                        <div key={i} className={`py-1.5 px-2 rounded text-xs ${
+                          log.type === 'damage' ? 'bg-red-900 bg-opacity-30 text-red-300' :
+                          log.type === 'er' ? 'bg-cyan-900 bg-opacity-30 text-cyan-300' :
+                          log.type === 'cast' ? 'bg-blue-900 bg-opacity-30 text-blue-300' :
+                          log.type === 'error' ? 'bg-orange-900 bg-opacity-30 text-orange-300' :
+                          'bg-gray-900 bg-opacity-50 text-gray-300'
+                        }`}>
+                          {log.message}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<CombatSandbox />);
+    </script>
+  </body>
+</html>
